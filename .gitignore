@@ -1,0 +1,100 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Runtime/generated product data
+logs/*
+!logs/.gitkeep
+output/*
+!output/.gitkeep
+Final/*
+!Final/.gitkeep
+metadata/*
+!metadata/.gitkeep
+
+# Keep input photos out of Git by default
+input/*
+!input/.gitkeep
+
+# Temporary optimizer files
+*.tmp.webp
+*.json.tmp
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Phase 2 secrets/runtime
+proxies.txt
+debug_html/*
+!debug_html/.gitkeep
+datasheets/*
+!datasheets/.gitkeep
+
+# Phase 3 / orchestrator runtime
+phase3_outputs/*
+!phase3_outputs/.gitkeep
+products/*
+!products/.gitkeep
+runtime_state/*
+!runtime_state/.gitkeep
+work/*
+!work/.gitkeep
+seo/*
+!seo/.gitkeep
+
+# Manual audit runtime images
+
+# Integrated V1.2 admin audit / trusted PN input
+PN_input/*
+!PN_input/.gitkeep
+ready_for_upload/*
+!ready_for_upload/.gitkeep
+audit_history/*
+!audit_history/.gitkeep
+
+# Generated V3 reports
+reports/*
+!reports/.gitkeep
+
+# Integrated V4 canonical manual input
+input_PN/*
+!input_PN/.gitkeep
+
+# ==========================================
+# GLOBAL EXCLUSIONS - ALTIMATE V101
+# ==========================================
+
+# All JSON files in all directories
+*.json
+*.JSON
+
+# All datasheet PDF files
+*.pdf
+*.PDF
+
+# All product images
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.svg
+*.ico
+*.avif
+*.heic
+
+# Additional temporary files
+*.tmp
+*.bak
