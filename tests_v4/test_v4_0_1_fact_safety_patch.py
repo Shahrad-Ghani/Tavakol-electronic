@@ -190,5 +190,5 @@ def test_pipeline_runs_explicit_fact_safety_repair_when_generic_retry_still_unsa
     assert any('FACT SAFETY TARGETED REPAIR' in x[0] for x in agent.repair_calls)
     repair_call = next(x for x in agent.repair_calls if 'FACT SAFETY TARGETED REPAIR' in x[0])
     assert 'FACT_SAFETY_REPAIR_CONTEXT' in repair_call[1]
-    assert 'TO-220' in repair_call[1]
+    assert 'DIP-8' in repair_call[1]
     assert state['validation']['fact_safety']['passed'] is True

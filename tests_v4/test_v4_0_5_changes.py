@@ -116,7 +116,7 @@ def test_dynamic_category_unknown_term_id_can_be_bundled_for_exact_site_lookup(t
     registry = {'schema_version':'1.0', 'categories': {'ic': copy.deepcopy(category_registry.category_context('ic'))}}
     del registry['categories']['ic']['key']
     file=tmp_path/'registry.json'
-    file.write_text(json.dumps(registry,ensure_ascii=False))
+    file.write_text(json.dumps(registry,ensure_ascii=False), encoding='utf-8')
     monkeypatch.setattr(category_registry,'REGISTRY_PATH',file)
     category_registry.load_registry.cache_clear()
     try:

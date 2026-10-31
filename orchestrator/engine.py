@@ -31,7 +31,7 @@ from phase2.banner_injector import inject_batch
 from integrated_pipeline import IntegratedPhase3Pipeline, set_phase3_log_sink
 
 from .adapter import build_phase3_input, build_integrated_product, sync_phase3_metadata, read_json
-from core.metadata_v3 import get_part_number, get_source_reference, image_finalized, sync_category
+from core.metadata_v3 import get_category_key, get_part_number, get_source_reference, image_finalized
 from .events import EventLogger
 from .runtime_guard import RecoveryController, RuntimeStop, classify_exception, host_reachable
 from .state_store import StateStore
@@ -236,11 +236,13 @@ class IntegratedOrchestrator:
                     self.log.emit('P1','WARN',pn,'PN_DUPLICATE',f'PN already claimed by {claimed}; skip queue')
                     return
                 self._pn_owner[pn.casefold()] = source_key
-            sync_category(data, self.category_key)
-            save_metadata(Path(metadata_path), data)
+            # Category is fixed when metadata is first created. Existing products
+            # and resumed items always retain the category stored in their record.
+            category = get_category_key(data)
             self.state.update(source_key, part_number=pn, metadata_path=str(metadata_path), phase1="PN_READY")
             authority = str((data.get("ocr") or {}).get("manual_authority") or "OCR")
-            self.log.emit("P1", "OK", pn, "PN_READY", f"PartNumber confirmed; authority={authority}; metadata={Path(metadata_path).name}")
+            self.log.emit("P1", "OK", pn, "PN_READY",
+                          f"PartNumber confirmed; authority={authority}; category={category}; metadata={Path(metadata_path).name}")
             audit = data.get("admin_audit") or {}
             issues = set(audit.get("selected_issues") or [])
             # Image-only reprocessing must not cascade into Phase 2/3.
@@ -325,6 +327,8 @@ class IntegratedOrchestrator:
             if not pn:
                 continue
             source_key = get_source_reference(data) or pn
+            # Resume is recovery of an existing product, never a new batch-category
+            # assignment. Keep its persisted category and all downstream checkpoints.
             ds_status = str((data.get("datasheet") or {}).get("status") or "pending")
             audit = data.get("admin_audit") or {}
             audit_status = str(audit.get("status") or "")
@@ -383,7 +387,7 @@ class IntegratedOrchestrator:
     def _run_pn_input_image(self, image: Path):
         pn = image.stem.strip()
         try:
-            meta_path, data = prepare_pn_input_metadata(self.root, image)
+            meta_path, data = prepare_pn_input_metadata(self.root, image, category_key=self.category_key)
         except Exception as exc:
             self.log.emit("P1", "ERROR", pn or image.name, "PN_INPUT", str(exc))
             return
@@ -446,6 +450,7 @@ class IntegratedOrchestrator:
                     self.root / "logs" / f"phase1_native_{time.strftime('%Y%m%d')}.log",
                     phase2_coordinator=None,
                     on_part_number_ready=self._pn_ready_callback(source_key),
+                    category_key=self.category_key,
                 )
             except RuntimeStop:
                 raise
@@ -666,10 +671,10 @@ class IntegratedOrchestrator:
 
             if self.input_mode == 'manual':
                 images = find_pn_input_images(self.root)
-                self.log.emit('SYS','INFO','-','PN_INPUT_DISCOVER',f'mode=manual | images={len(images)} | category={self.category_key}')
+                self.log.emit('SYS','INFO','-','PN_INPUT_DISCOVER',f'mode=manual | images={len(images)} | new_metadata_category={self.category_key} | existing_metadata=preserved')
             else:
                 images = find_images(self.root)
-                self.log.emit('SYS','INFO','-','DISCOVER',f'mode=default | images={len(images)} | category={self.category_key}')
+                self.log.emit('SYS','INFO','-','DISCOVER',f'mode=default | images={len(images)} | new_metadata_category={self.category_key} | existing_metadata=preserved')
             # Existing P2/P3 resume queues are sufficient to run a content-only batch.
             # A blank manual input must not abort the pending Phase3 jobs.
             if not images and not (self._p2q.unfinished_tasks or self._p3q.unfinished_tasks):
@@ -691,11 +696,16 @@ class IntegratedOrchestrator:
                         except Exception as exc: self.log.emit('P1','ERROR','-','WORKER_FAILURE',str(exc))
             if not self.recovery.fatal_failure and not self.recovery.stop_requested:
                 self._p2q.join()
-                banner_result = inject_batch(self.root / "datasheets", self.root / "assets" / "banner.png", "https://tavakolelectronic.com/")
+                banner_result = inject_batch(
+                    self.root / "datasheets",
+                    self.root / "assets" / "banner.png",
+                    "https://tavakolelectronic.com/",
+                    output_dir=self.root / "datasheets_branded",
+                )
                 if banner_result["errors"]:
-                    self.log.emit("P2", "WARN", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | errors={banner_result['errors']}")
+                    self.log.emit("P2", "WARN", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | output={banner_result.get('output_dir')} | errors={banner_result['errors']}")
                 else:
-                    self.log.emit("P2", "OK", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | already_done={len(banner_result['skipped'])}")
+                    self.log.emit("P2", "OK", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | already_done={len(banner_result['skipped'])} | output={banner_result.get('output_dir')}")
                 self._p3q.join()
                 self.log.emit("SYS", "OK", "-", "DONE", "all available products reached their latest terminal checkpoint")
                 return 0

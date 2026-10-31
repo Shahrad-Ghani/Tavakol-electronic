@@ -17,6 +17,7 @@ from core.category_integrity import (
     assert_upstream_category_consistency,
 )
 from metadata_manager import portable_path, resolve_recorded_path, save_admin_override
+from phase2.banner_injector import has_banner
 
 BUNDLE_CONTRACT_VERSION = "4.0"
 
@@ -159,6 +160,12 @@ def build_canonical_bundle(root: Path, metadata_path: Path, data: dict[str, Any]
             datasheet_path = None
     if ds_status == "completed" and datasheet_path is None:
         raise RuntimeError("Datasheet status is completed but PDF file is missing")
+    # Phase 2's exact source PDF remains pristine for technical extraction.
+    # Publication uses a separately branded copy only when its marker verifies.
+    if datasheet_path is not None:
+        branded_candidate = root / "datasheets_branded" / f"{pn}.pdf"
+        if branded_candidate.is_file() and has_banner(branded_candidate):
+            datasheet_path = branded_candidate
     if ds_status == "sales_only_no_datasheet":
         if not bool(ds.get("sales_only_authorized")) or datasheet_path is not None:
             raise RuntimeError("Sales-only without datasheet requires explicit admin authorization and no PDF")
