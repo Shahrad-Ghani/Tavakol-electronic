@@ -712,11 +712,16 @@ class IntegratedOrchestrator:
                         except Exception as exc: self.log.emit('P1','ERROR','-','WORKER_FAILURE',str(exc))
             if not self.recovery.fatal_failure and not self.recovery.stop_requested:
                 self._p2q.join()
-                banner_result = inject_batch(self.root / "datasheets", self.root / "assets" / "banner.png", "https://tavakolelectronic.com/")
+                banner_result = inject_batch(
+                    self.root / "datasheets",
+                    self.root / "assets" / "banner.png",
+                    "https://tavakolelectronic.com/",
+                    output_dir=self.root / "datasheets_branded",
+                )
                 if banner_result["errors"]:
-                    self.log.emit("P2", "WARN", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | errors={banner_result['errors']}")
+                    self.log.emit("P2", "WARN", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | output={banner_result.get('output_dir')} | errors={banner_result['errors']}")
                 else:
-                    self.log.emit("P2", "OK", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | already_done={len(banner_result['skipped'])}")
+                    self.log.emit("P2", "OK", "-", "DATASHEET_BANNER", f"changed={len(banner_result['changed'])} | already_done={len(banner_result['skipped'])} | output={banner_result.get('output_dir')}")
                 self._p3q.join()
                 self.log.emit("SYS", "OK", "-", "DONE", "all available products reached their latest terminal checkpoint")
                 return 0
