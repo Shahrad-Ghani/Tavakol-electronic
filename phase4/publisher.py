@@ -755,7 +755,7 @@ def open_new_product(page: Page, pn: str) -> None:
 
 def upload_product_image(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
-    log(f"{pn} | STEP 1 | Product image upload + final selection")
+    log(f"{pn} | STEP 2 | Product image upload + final selection")
 
     click_with_scroll_retry(
         page, first_visible(page, ["#set-post-thumbnail:visible"]),
@@ -864,7 +864,7 @@ def upload_product_image(page: Page, bundle: ProductBundle) -> None:
 
 def set_title_and_main_content(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
-    log(f"{pn} | STEP 2 | Product title + main content")
+    log(f"{pn} | STEP 1 | Product title + Phase 3 main content")
 
     title = first_visible(page, ["#title:visible"])
     title.fill(bundle.title)
@@ -872,7 +872,7 @@ def set_title_and_main_content(page: Page, bundle: ProductBundle) -> None:
     set_editor_html(page, "content", bundle.html)
     wait_ms(page, 500)
 
-    log(f"{pn} | STEP 2 OK | title={bundle.title!r}")
+    log(f"{pn} | STEP 1 OK | title={bundle.title!r}")
 
 
 def upload_datasheet(page: Page, bundle: ProductBundle) -> None:
@@ -1014,6 +1014,7 @@ def set_attributes(page: Page, bundle: ProductBundle) -> None:
     on the final WordPress Save Draft action. Do not click save_attributes.
     """
     pn = bundle.pn
+    log(f"{pn} | STEP 7 | WooCommerce attributes")
     expected, missing = _attribute_pairs(bundle)
     if missing:
         log(f"{pn} | MOSFET SPECS UNRESOLVED | {missing} | admin must complete manually")
@@ -1067,11 +1068,12 @@ def set_attributes(page: Page, bundle: ProductBundle) -> None:
                for i in range(len(expected))]
     if entered != expected:
         raise RuntimeError(f'Attribute form mismatch: {entered!r} vs {expected!r}')
-    log(f'{pn} | ATTRIBUTES FILLED (pending final Save Draft) | {expected!r} | missing={missing!r}')
+    log(f'{pn} | STEP 7 OK | ATTRIBUTES FILLED (pending final Save Draft) | {expected!r} | missing={missing!r}')
 
 
 def set_sku(page: Page, bundle: ProductBundle) -> None:
     """Product Data -> Inventory -> SKU = exact part number."""
+    log(f"{bundle.pn} | STEP 8 | WooCommerce SKU")
     click_with_scroll_retry(
         page, first_visible(page, ['li.inventory_options a:visible', 'a[href="#inventory_product_data"]:visible']),
         "Open WooCommerce Inventory tab",
@@ -1086,7 +1088,7 @@ def set_sku(page: Page, bundle: ProductBundle) -> None:
     sku.press('Tab')
     if sku.input_value().strip() != bundle.pn:
         raise RuntimeError('SKU verification failed')
-    log(f'{bundle.pn} | SKU SET | {bundle.pn}')
+    log(f'{bundle.pn} | STEP 8 OK | SKU SET | {bundle.pn}')
 
 
 # Legacy V3 example mapping was: قطعات الکترونیکی -> "آی سی". V4 is registry-driven.
@@ -1145,21 +1147,23 @@ def _show_all_product_categories(page: Page) -> None:
     if all_tab.count() == 0:
         raise RuntimeError('All Categories tab not found')
     try:
-        all_tab.first.scroll_into_view_if_needed(timeout=4000)
         click_with_scroll_retry(
             page, all_tab.first, "Open All Product Categories tab", timeout_ms=5000,
             already_done=lambda: checklist.is_visible(),
         )
-    except Exception:
-        # Native DOM click dispatches WordPress's own tab handler; this does NOT
-        # click a hidden checkbox, bypass category mapping, or force-save data.
-        all_tab.first.evaluate('(element) => element.click()')
+    except Exception as exc:
+        scroll_nudge_down_up(page, "All Product Categories tab handler")
+        if not checklist.is_visible():
+            raise RuntimeError(
+                "All Categories tab handler did not activate after scroll retry"
+            ) from exc
     if not checklist.is_visible():
         raise RuntimeError('All Categories checklist did not become visible')
 
 
 def set_product_category(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
+    log(f"{pn} | STEP 9 | WooCommerce parent + child category")
     close_media_modal_if_open(page)
     wait_for_woocommerce_unblocked(page)
     if not page.locator('#product_catdiv').count():
@@ -1173,22 +1177,22 @@ def set_product_category(page: Page, bundle: ProductBundle) -> None:
             check_with_scroll_retry(page, checkbox, f"Select product category {label}", timeout_ms=12000)
         if not checkbox.is_checked():
             raise RuntimeError(f'Category not checked: {label!r}')
-    log(f'{pn} | CATEGORY OK | {bundle.category_parent} -> {bundle.category_child}')
+    log(f'{pn} | STEP 9 OK | CATEGORY OK | {bundle.category_parent} -> {bundle.category_child}')
 
 
 def set_short_description(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
-    log(f"{pn} | STEP 5 | Short description = canonical Meta Description")
+    log(f"{pn} | STEP 4 | Short description = Phase 3 canonical content")
 
     set_editor_html(page, "excerpt", bundle.short_description_html)
     wait_ms(page, 500)
 
-    log(f"{pn} | STEP 5 OK")
+    log(f"{pn} | STEP 4 OK")
 
 
 def set_rankmath_snippet(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
-    log(f"{pn} | STEP 6 | Rank Math SEO Title + Meta Description + permalink")
+    log(f"{pn} | STEP 5 | Rank Math SEO Title + Phase 3 Meta Description + permalink")
     close_media_modal_if_open(page)
     edit_btn = first_visible(page, ["button.rank-math-edit-snippet:visible", 'button:has-text("ویرایش Snippet"):visible'], timeout_ms=10000)
     click_with_scroll_retry(
@@ -1229,12 +1233,12 @@ def set_rankmath_snippet(page: Page, bundle: ProductBundle) -> None:
     wait_ms(page, 500)
     if page.locator('#rank-math-editor-title:visible').count():
         raise RuntimeError('Rank Math Edit Snippet modal did not close')
-    log(f"{pn} | STEP 6 OK | seo_title={bundle.seo_title!r} | permalink={bundle.slug}")
+    log(f"{pn} | STEP 5 OK | seo_title={bundle.seo_title!r} | permalink={bundle.slug}")
 
 
 def set_focus_keyword(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
-    log(f"{pn} | STEP 7 | Rank Math focus keyword")
+    log(f"{pn} | STEP 6 | Rank Math focus keyword")
 
     if page.locator(".components-modal__frame.rank-math-modal:visible").count():
         raise RuntimeError("Rank Math modal is still open before Focus Keyword entry")
@@ -1285,7 +1289,7 @@ def set_focus_keyword(page: Page, bundle: ProductBundle) -> None:
             f"container_text={container_text!r}, backing_values={backing_values!r}"
         )
 
-    log(f"{pn} | STEP 7 OK | focus keyword={pn}")
+    log(f"{pn} | STEP 6 OK | focus keyword={pn}")
 
 
 class DraftVerificationError(RuntimeError):
@@ -1357,7 +1361,7 @@ def verify_saved_draft(page: Page, bundle: ProductBundle) -> list[str]:
 
 def save_draft(page: Page, bundle: ProductBundle) -> tuple[Optional[str], str]:
     pn = bundle.pn
-    log(f"{pn} | STEP 8 | Save Draft")
+    log(f"{pn} | STEP 10 | Save Draft")
 
     close_media_modal_if_open(page)
     wait_for_woocommerce_unblocked(page, timeout_ms=30000)
@@ -1429,7 +1433,7 @@ def save_draft(page: Page, bundle: ProductBundle) -> tuple[Optional[str], str]:
     if verification_errors:
         raise DraftVerificationError(str(post_id), current, verification_errors)
     # Never click #publish.
-    log(f"{pn} | STEP 8 OK | DRAFT SAVED & VERIFIED | post_id={post_id} | url={current}")
+    log(f"{pn} | STEP 10 OK | DRAFT SAVED & VERIFIED | post_id={post_id} | url={current}")
     return post_id, current
 
 
@@ -1449,7 +1453,11 @@ def recover_ui_after_step_error(page: Page, pn: str, step_name: str) -> None:
                 '.components-modal__frame.rank-math-modal button[aria-label="Close"]:visible'
             )
             if close_buttons.count():
-                close_buttons.first.click(timeout=3000)
+                click_with_scroll_retry(
+                    page, close_buttons.first, "Close modal during UI recovery",
+                    timeout_ms=3000,
+                    already_done=lambda: page.locator(".components-modal__frame.rank-math-modal:visible").count() == 0,
+                )
     except Exception:
         pass
 
