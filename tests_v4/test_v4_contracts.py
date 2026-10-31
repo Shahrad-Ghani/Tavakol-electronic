@@ -75,3 +75,36 @@ def test_v4_manual_input_folder_is_canonical_and_legacy_is_only_fallback(tmp_pat
     Image.new("RGB", (8, 8), "white").save(canonical / "V4PN123.png")
     # Once canonical V4 folder exists, Manual mode only sees input_PN/.
     assert [p.name for p in find_pn_input_images(tmp_path)] == ["V4PN123.png"]
+
+
+
+def test_batch_category_is_only_a_default_for_new_metadata(tmp_path):
+    from metadata_manager import load_or_create, save
+    from core.metadata_v3 import get_category_key
+
+    meta, data = load_or_create(tmp_path, "NEW_IGBT_001", category="igbt_transistor")
+    assert get_category_key(data) == "igbt_transistor"
+
+    data["part_number"] = "NEW_IGBT_001"
+    save(meta, data)
+
+    _, resumed = load_or_create(tmp_path, "NEW_IGBT_001", category="mosfet")
+    assert get_category_key(resumed) == "igbt_transistor"
+
+
+def test_manual_pn_input_category_is_creation_only(tmp_path):
+    from PIL import Image
+    from admin_audit import prepare_pn_input_metadata
+    from core.metadata_v3 import get_category_key
+
+    input_dir = tmp_path / "input_PN"
+    input_dir.mkdir(parents=True)
+    image_path = input_dir / "IGBT_MANUAL_001.png"
+    Image.new("RGB", (24, 24), "white").save(image_path)
+
+    meta, first = prepare_pn_input_metadata(tmp_path, image_path, category_key="igbt_transistor")
+    assert get_category_key(first) == "igbt_transistor"
+
+    _, resumed = prepare_pn_input_metadata(tmp_path, image_path, category_key="mosfet")
+    assert get_category_key(resumed) == "igbt_transistor"
+    assert resumed["product_title"] == product_title("IGBT_MANUAL_001", "igbt_transistor")
