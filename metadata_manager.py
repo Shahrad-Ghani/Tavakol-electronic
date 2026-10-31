@@ -261,14 +261,25 @@ def _migrate_legacy_record(data: dict, ref_stem: str, category: str = "IC") -> d
 
 
 def load_or_create(root: Path, ref_stem: str, category="IC"):
+    """Load an existing product without changing its category, or create a new one.
+
+    The selected batch category is a creation-time default only. Existing
+    metadata (including resumable and legacy records) keeps its persisted
+    category; legacy records with no category retain the historical IC default.
+    """
     path = _find_by_reference(root, ref_stem)
-    if path is not None:
+    is_new = path is None
+    if not is_new:
         raw = json.loads(path.read_text(encoding="utf-8"))
-        data = _migrate_legacy_record(raw, ref_stem, category)
+        data = _migrate_legacy_record(raw, ref_stem, "ic")
+        defaults_category = "ic"
     else:
         path = metadata_path(root, ref_stem)
         data = _new_record(ref_stem, category)
-    defaults = _new_record(ref_stem, category)
+        defaults_category = category
+    # Do not let a newly selected batch category leak into missing fields of
+    # an existing record while filling its schema defaults.
+    defaults = _new_record(ref_stem, defaults_category)
     for key, value in defaults.items():
         if key not in data:
             data[key] = deepcopy(value)
