@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/phase3-final-agent-output-v3.json",
+  "title": "Phase3 Final Agent Output V3.0 — product title is deterministic outside LLM",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seo_title",
+    "meta_description",
+    "body_markdown",
+    "image_alts",
+    "internal_links",
+    "external_links",
+    "woocommerce_attributes"
+  ],
+  "properties": {
+    "seo_title": {
+      "type": "string"
+    },
+    "meta_description": {
+      "type": "string"
+    },
+    "body_markdown": {
+      "type": "string"
+    },
+    "image_alts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filename",
+          "alt"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "alt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "internal_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "anchor"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "anchor": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "external_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "anchor",
+          "nofollow"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "anchor": {
+            "type": "string"
+          },
+          "nofollow": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "woocommerce_attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_number",
+        "package_installation"
+      ],
+      "properties": {
+        "part_number": {
+          "type": "string"
+        },
+        "package_installation": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
