@@ -16,7 +16,6 @@ from metadata_manager import save as save_metadata
 from metadata_manager import portable_path, resolve_recorded_path
 from pipeline import process_one, set_phase1_log_sink
 from admin_audit import (
-    apply_batch_category,
     find_pn_input_images,
     mark_phase1_reprocessed_if_image_only,
     mark_phase3_reprocessed,
@@ -32,7 +31,7 @@ from phase2.banner_injector import inject_batch
 from integrated_pipeline import IntegratedPhase3Pipeline, set_phase3_log_sink
 
 from .adapter import build_phase3_input, build_integrated_product, sync_phase3_metadata, read_json
-from core.metadata_v3 import get_part_number, get_source_reference, image_finalized, sync_category
+from core.metadata_v3 import get_category_key, get_part_number, get_source_reference, image_finalized
 from .events import EventLogger
 from .runtime_guard import RecoveryController, RuntimeStop, classify_exception, host_reachable
 from .state_store import StateStore
@@ -237,14 +236,13 @@ class IntegratedOrchestrator:
                     self.log.emit('P1','WARN',pn,'PN_DUPLICATE',f'PN already claimed by {claimed}; skip queue')
                     return
                 self._pn_owner[pn.casefold()] = source_key
-            category_result = apply_batch_category(self.root, Path(metadata_path), data, self.category_key)
-            if category_result.get("blocked"):
-                self.log.emit("P1", "ERROR", pn, "CATEGORY_CHANGE_BLOCKED",
-                              "This Part Number already has a WordPress product; category was not changed")
-                return
+            # Category is fixed when metadata is first created. Existing products
+            # and resumed items always retain the category stored in their record.
+            category = get_category_key(data)
             self.state.update(source_key, part_number=pn, metadata_path=str(metadata_path), phase1="PN_READY")
             authority = str((data.get("ocr") or {}).get("manual_authority") or "OCR")
-            self.log.emit("P1", "OK", pn, "PN_READY", f"PartNumber confirmed; authority={authority}; metadata={Path(metadata_path).name}")
+            self.log.emit("P1", "OK", pn, "PN_READY",
+                          f"PartNumber confirmed; authority={authority}; category={category}; metadata={Path(metadata_path).name}")
             audit = data.get("admin_audit") or {}
             issues = set(audit.get("selected_issues") or [])
             # Image-only reprocessing must not cascade into Phase 2/3.
@@ -329,23 +327,8 @@ class IntegratedOrchestrator:
             if not pn:
                 continue
             source_key = get_source_reference(data) or pn
-            try:
-                category_result = apply_batch_category(self.root, path, data, self.category_key)
-                if category_result.get("blocked"):
-                    self.log.emit("SYS", "WARN", pn, "CATEGORY_CHANGE_BLOCKED",
-                                  "Existing WordPress product is protected from batch category reassignment")
-                    continue
-                if category_result.get("changed"):
-                    self.log.emit(
-                        "SYS", "WARN" if category_result.get("invalidated_downstream") else "INFO",
-                        pn, "BATCH_CATEGORY_APPLIED",
-                        f"{category_result.get('old_category')} -> {category_result.get('new_category')} | "
-                        f"downstream_invalidated={bool(category_result.get('invalidated_downstream'))}",
-                    )
-                    data = read_json(path)
-            except Exception as exc:
-                self.log.emit("SYS", "ERROR", pn, "BATCH_CATEGORY_FAILED", str(exc))
-                continue
+            # Resume is recovery of an existing product, never a new batch-category
+            # assignment. Keep its persisted category and all downstream checkpoints.
             ds_status = str((data.get("datasheet") or {}).get("status") or "pending")
             audit = data.get("admin_audit") or {}
             audit_status = str(audit.get("status") or "")
@@ -404,7 +387,7 @@ class IntegratedOrchestrator:
     def _run_pn_input_image(self, image: Path):
         pn = image.stem.strip()
         try:
-            meta_path, data = prepare_pn_input_metadata(self.root, image)
+            meta_path, data = prepare_pn_input_metadata(self.root, image, category_key=self.category_key)
         except Exception as exc:
             self.log.emit("P1", "ERROR", pn or image.name, "PN_INPUT", str(exc))
             return
@@ -467,6 +450,7 @@ class IntegratedOrchestrator:
                     self.root / "logs" / f"phase1_native_{time.strftime('%Y%m%d')}.log",
                     phase2_coordinator=None,
                     on_part_number_ready=self._pn_ready_callback(source_key),
+                    category_key=self.category_key,
                 )
             except RuntimeStop:
                 raise
