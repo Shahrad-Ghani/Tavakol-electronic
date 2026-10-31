@@ -1,0 +1,37 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["source_assessment","facts"],
+  "properties":{
+    "source_assessment":{
+      "type":"object","additionalProperties":false,
+      "required":["exact_part_number_covered","source_kind","manufacturer","reason"],
+      "properties":{
+        "exact_part_number_covered":{"type":"boolean"},
+        "source_kind":{"type":"string","enum":["DATASHEET","OTHER"]},
+        "manufacturer":{"type":["string","null"]},
+        "reason":{"type":"string"}
+      }
+    },
+    "facts":{
+      "type":"array","maxItems":16,
+      "items":{
+        "type":"object","additionalProperties":false,
+        "required":["id","parameter","claim","value_text","unit","condition","section","scope","seo_usage","page"],
+        "properties":{
+          "id":{"type":"string"},
+          "parameter":{"type":"string"},
+          "claim":{"type":"string"},
+          "value_text":{"type":"string"},
+          "unit":{"type":["string","null"]},
+          "condition":{"type":["string","null"]},
+          "section":{"type":"string","enum":["FUNCTION","APPLICATION","OPERATING_CONDITION","ELECTRICAL_CHARACTERISTIC","ABSOLUTE_MAXIMUM","PACKAGE","OTHER"]},
+          "scope":{"type":"string","enum":["TARGET_ONLY","FAMILY_SHARED","UNKNOWN"]},
+          "seo_usage":{"type":"string","enum":["NORMAL","LIMIT_ONLY","NEVER"]},
+          "page":{"type":["integer","null"],"minimum":1}
+        }
+      }
+    }
+  }
+}
