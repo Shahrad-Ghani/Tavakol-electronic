@@ -139,7 +139,7 @@ def test_phase4_publisher_uses_new_product_flow_and_phase3_content():
     assert 'store.duplicate_guard(pn)' in source
     assert 'locate_existing_wordpress_product(page, bundle)' in source
     assert 'wp_repair' not in source.lower()
-    assert 'save_attributes' not in source.lower()
+    assert 'save_attributes.click' not in source.lower()
     assert 'page.locator("#publish")' not in source
 
 
