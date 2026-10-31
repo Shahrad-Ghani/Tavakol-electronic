@@ -95,7 +95,12 @@ def inject_batch(
     destination_dir = Path(output_dir) if output_dir is not None else source_dir
     destination_dir.mkdir(parents=True, exist_ok=True)
     result = {"changed": [], "skipped": [], "errors": {}, "output_dir": str(destination_dir.resolve())}
-    for pdf in sorted(source_dir.glob("*.pdf"), key=lambda p: p.name.casefold()):
+    source_pdfs = {
+        p.resolve(): p
+        for pattern in ("*.pdf", "*.PDF")
+        for p in source_dir.glob(pattern)
+    }
+    for pdf in sorted(source_pdfs.values(), key=lambda p: p.name.casefold()):
         try:
             target = destination_dir / pdf.name
             if output_dir is not None:
