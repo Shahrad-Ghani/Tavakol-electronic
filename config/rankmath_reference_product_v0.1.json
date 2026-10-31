@@ -1,0 +1,64 @@
+{
+  "profile": "rankmath_reference_calibration_v0.1.1",
+  "notes": "Calibration candidate: public Rank Math analyzer weights plus public generic graduated content-length boundaries. No Tavakol hard gates affect score.",
+  "site_domain": "tavakolelectronic.com",
+  "weights": {
+    "keyword_in_title": 38,
+    "keyword_in_meta_description": 2,
+    "keyword_in_permalink": 5,
+    "keyword_in_first_10_percent": 3,
+    "keyword_in_content": 3,
+    "keyword_in_subheadings": 3,
+    "keyword_density": 6,
+    "keyword_in_image_alt": 2,
+    "permalink_length": 4,
+    "internal_link": 5,
+    "external_link": 4,
+    "external_dofollow": 2,
+    "short_paragraphs": 3,
+    "media_assets": 6,
+    "title_start_with_keyword": 3,
+    "content_length": 8
+  },
+  "thresholds": {
+    "keyword_density": {
+      "fail_below": 0.5,
+      "fair_min": 0.5,
+      "fair_max": 0.75,
+      "good_min": 0.76,
+      "good_max": 1.0,
+      "best_min": 1.01,
+      "best_max": 2.5,
+      "fail_above": 2.5,
+      "fair_score": 2,
+      "good_score": 3,
+      "best_score": 6
+    },
+    "permalink_max_chars": 75,
+    "paragraph_max_words": 120,
+    "product_min_words": 200,
+    "media_full_score_count": 4,
+    "content_length_boundaries": {
+      "recommended": {
+        "boundary": 2500,
+        "score": 8
+      },
+      "below_recommended": {
+        "boundary": 2000,
+        "score": 5
+      },
+      "medium": {
+        "boundary": 1500,
+        "score": 4
+      },
+      "below_medium": {
+        "boundary": 1000,
+        "score": 3
+      },
+      "low": {
+        "boundary": 600,
+        "score": 2
+      }
+    }
+  }
+}
