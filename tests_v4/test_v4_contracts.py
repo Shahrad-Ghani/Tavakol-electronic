@@ -108,3 +108,116 @@ def test_manual_pn_input_category_is_creation_only(tmp_path):
     _, resumed = prepare_pn_input_metadata(tmp_path, image_path, category_key="mosfet")
     assert get_category_key(resumed) == "igbt_transistor"
     assert resumed["product_title"] == product_title("IGBT_MANUAL_001", "igbt_transistor")
+
+
+def test_phase4_publisher_uses_new_product_flow_and_phase3_content():
+    import ast
+
+    publisher_path = ROOT / "phase4" / "publisher.py"
+    source = publisher_path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    publish_one = next(
+        node for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "publish_one"
+    )
+    steps_assignment = next(
+        node for node in publish_one.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "steps" for target in node.targets)
+    )
+    step_keys = [item.elts[0].value for item in steps_assignment.value.elts]
+    assert step_keys == [
+        "title_content", "image", "datasheet", "short_description",
+        "snippet", "focus_keyword", "attributes", "sku", "category",
+    ]
+
+    assert 'title.fill(bundle.title)' in source
+    assert 'set_editor_html(page, "content", bundle.html)' in source
+    assert 'set_editor_html(page, "excerpt", bundle.short_description_html)' in source
+    assert 'title.fill(bundle.seo_title)' in source
+    assert 'description.fill(bundle.meta_description)' in source
+    assert 'store.duplicate_guard(pn)' in source
+    assert 'locate_existing_wordpress_product(page, bundle)' in source
+    assert 'wp_repair' not in source.lower()
+    assert 'save_attributes' not in source.lower()
+    assert 'page.locator("#publish")' not in source
+
+
+def test_phase4_first_visible_nudges_scroll_before_final_locator_retry():
+    from phase4.publisher import first_visible
+
+    class FakeLocator:
+        def __init__(self, page):
+            self.page = page
+
+        def count(self):
+            return 1
+
+        def nth(self, index):
+            return self
+
+        def is_visible(self):
+            return self.page.target_visible
+
+    class FakePage:
+        def __init__(self):
+            self.target_visible = False
+            self.scroll_calls = 0
+
+        def locator(self, selector):
+            return FakeLocator(self)
+
+        def evaluate(self, expression, arg=None):
+            if "window.scrollY" in expression:
+                return 0
+            if "window.scrollBy" in expression:
+                self.scroll_calls += 1
+                self.target_visible = True
+            return 0
+
+        def wait_for_timeout(self, milliseconds):
+            return None
+
+    page = FakePage()
+    locator = first_visible(page, ["#late-rendered-control"], timeout_ms=1)
+    assert locator.is_visible()
+    assert page.scroll_calls >= 2
+
+
+def test_phase4_click_handler_gets_one_scroll_retry():
+    from phase4.publisher import click_with_scroll_retry
+
+    class FakeLocator:
+        def __init__(self):
+            self.click_count = 0
+
+        def scroll_into_view_if_needed(self, timeout=None):
+            return None
+
+        def click(self, timeout=None):
+            self.click_count += 1
+            if self.click_count == 1:
+                raise RuntimeError("simulated transient handler failure")
+
+        def wait_for(self, state=None, timeout=None):
+            return None
+
+    class FakePage:
+        def __init__(self):
+            self.scroll_calls = 0
+
+        def evaluate(self, expression, arg=None):
+            if "window.scrollY" in expression:
+                return 0
+            if "window.scrollBy" in expression:
+                self.scroll_calls += 1
+            return 0
+
+        def wait_for_timeout(self, milliseconds):
+            return None
+
+    page = FakePage()
+    locator = FakeLocator()
+    click_with_scroll_retry(page, locator, "test handler", timeout_ms=1)
+    assert locator.click_count == 2
+    assert page.scroll_calls >= 2
