@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -77,11 +78,31 @@ def inject_banner(pdf_path: Path, banner_path: Path, target_url: str) -> bool:
     return True
 
 
-def inject_batch(datasheets_dir: Path, banner_path: Path, target_url: str) -> dict:
-    result = {"changed": [], "skipped": [], "errors": {}}
-    for pdf in sorted(Path(datasheets_dir).glob("*.pdf"), key=lambda p: p.name.casefold()):
+def inject_batch(
+    datasheets_dir: Path,
+    banner_path: Path,
+    target_url: str,
+    *,
+    output_dir: Path | None = None,
+) -> dict:
+    """Create branded copies while leaving Phase 2's authoritative PDFs untouched.
+
+    When output_dir is omitted, legacy in-place behavior is retained for callers
+    that explicitly depend on it. The integrated orchestrator always supplies a
+    separate output directory.
+    """
+    source_dir = Path(datasheets_dir)
+    destination_dir = Path(output_dir) if output_dir is not None else source_dir
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    result = {"changed": [], "skipped": [], "errors": {}, "output_dir": str(destination_dir.resolve())}
+    for pdf in sorted(source_dir.glob("*.pdf"), key=lambda p: p.name.casefold()):
         try:
-            if inject_banner(pdf, banner_path, target_url):
+            target = destination_dir / pdf.name
+            if output_dir is not None:
+                # Rebuild from the pristine source every run. Never stack banners
+                # or accidentally feed a previously branded file into extraction.
+                shutil.copy2(pdf, target)
+            if inject_banner(target, banner_path, target_url):
                 result["changed"].append(pdf.name)
             else:
                 result["skipped"].append(pdf.name)
