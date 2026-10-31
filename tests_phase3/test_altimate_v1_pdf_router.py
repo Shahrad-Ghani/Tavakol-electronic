@@ -1,8 +1,17 @@
 from pathlib import Path
+from pypdf import PdfWriter
 from phase3_fact_extraction.pipeline import FactExtractionPipeline
 
 ROOT=Path(__file__).resolve().parents[1]
-PDF=ROOT/'tests_phase3'/'fixtures'/'TBB1469.pdf'
+def make_test_pdf(tmp_path):
+    """Create a tiny synthetic PDF; model calls are mocked in these tests."""
+    path = tmp_path / 'TBB1469.pdf'
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    writer.add_blank_page(width=612, height=792)
+    with path.open('wb') as stream:
+        writer.write(stream)
+    return path
 
 class FakeAgent:
     def __init__(self, model, result, fail_if_called=False):
@@ -43,7 +52,7 @@ def test_normal_path_is_exactly_one_luna_pdf_call(tmp_path):
     primary=FakeAgent('gpt-5.6-luna',result(sufficient_facts()))
     fallback=FakeAgent('unused-fallback',result([]),fail_if_called=True)
     p=FactExtractionPipeline(ROOT,cfg(),primary_agent=primary,fallback_agent=fallback,file_manager=object())
-    out=p.process('TBB1469',PDF,tmp_path/'work',force=True)
+    out=p.process('TBB1469',make_test_pdf(tmp_path),tmp_path/'work',force=True)
     assert primary.calls==1
     assert fallback.calls==0
     assert out['source_validation']['pdf_calls']==1
@@ -55,7 +64,7 @@ def test_sparse_primary_is_retained_without_second_pdf_call(tmp_path):
     primary=FakeAgent('gpt-5.6-luna',result([fact(1,'Supply current',value='4',unit='mA')]))
     fallback=FakeAgent('unused-fallback',result([]),fail_if_called=True)
     p=FactExtractionPipeline(ROOT,cfg(),primary_agent=primary,fallback_agent=fallback,file_manager=object())
-    out=p.process('TBB1469',PDF,tmp_path/'work',force=True)
+    out=p.process('TBB1469',make_test_pdf(tmp_path),tmp_path/'work',force=True)
     assert primary.calls==1 and fallback.calls==0
     assert out['source_validation']['pdf_calls']==1
     assert out['source_validation']['fallback_used'] is False
@@ -70,7 +79,7 @@ def test_truncated_five_page_window_does_not_change_source_kind(tmp_path):
     fallback=FakeAgent('unused-fallback',result([]),fail_if_called=True)
     c=cfg(); c['pdf_first_pages']=1
     p=FactExtractionPipeline(ROOT,c,primary_agent=primary,fallback_agent=fallback,file_manager=object())
-    out=p.process('TBB1469',PDF,tmp_path/'work',force=True)
+    out=p.process('TBB1469',make_test_pdf(tmp_path),tmp_path/'work',force=True)
     assert out['pdf_window']['truncated'] is True
     assert out['source_validation']['source_kind']=='DATASHEET'
     assert out['source_validation']['original_source_status']=='EXACT_DATASHEET_FILE_RESOLVED_BY_PHASE2'
