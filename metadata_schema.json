@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/integrated-metadata-v3.json",
+  "title": "Tavakol Integrated Metadata V3.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product_id",
+    "product_type",
+    "source_reference",
+    "part_number",
+    "product_title",
+    "manufacturer",
+    "country",
+    "original_image",
+    "precheck",
+    "regeneration",
+    "identity_validation",
+    "ocr",
+    "logo",
+    "image_optimization",
+    "datasheet",
+    "package",
+    "phase2_history",
+    "phase3",
+    "admin_audit",
+    "publishing",
+    "diagnostics",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.0"
+    },
+    "product_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "product_type": {
+      "type": "string"
+    },
+    "source_reference": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "part_number": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "product_title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "manufacturer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "country": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "original_image": {
+      "type": "object"
+    },
+    "precheck": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "regeneration": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "identity_validation": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "ocr": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "logo": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "image_optimization": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "datasheet": {
+      "type": "object",
+      "required": [
+        "status",
+        "verified_exact_match",
+        "source_trace",
+        "source_states"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "searched_part_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matched_part_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified_exact_match": {
+          "type": "boolean"
+        },
+        "identity_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manufacturer_country": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manufacturer_country_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "identity_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "document_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mouser_part_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ambiguity_flag": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ambiguity_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "alternative_manufacturers": {
+          "type": "array"
+        },
+        "ambiguity_selection_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_trace": {
+          "type": "array"
+        },
+        "source_states": {
+          "type": "object"
+        },
+        "last_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "completed_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "package": {
+      "type": "object",
+      "required": [
+        "value",
+        "source",
+        "status",
+        "resolved_by",
+        "exact_part_number_match",
+        "sources_tried",
+        "updated_at"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attribute_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "unresolved",
+            "resolved",
+            "manual_required",
+            "invalidated"
+          ]
+        },
+        "resolved_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exact_part_number_match": {
+          "type": "boolean"
+        },
+        "sources_tried": {
+          "type": "array"
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "phase2_history": {
+      "type": "array"
+    },
+    "phase3": {
+      "type": "object"
+    },
+    "admin_audit": {
+      "type": "object"
+    },
+    "publishing": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "object"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "category": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "title_prefix": {
+          "type": "string"
+        },
+        "density_phrase": {
+          "type": "string"
+        },
+        "slug_rule": {
+          "type": "string"
+        },
+        "category_url": {
+          "type": "string"
+        },
+        "wordpress": {
+          "type": "object"
+        },
+        "technical_focus": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
