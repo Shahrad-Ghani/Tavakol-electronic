@@ -671,10 +671,10 @@ class IntegratedOrchestrator:
 
             if self.input_mode == 'manual':
                 images = find_pn_input_images(self.root)
-                self.log.emit('SYS','INFO','-','PN_INPUT_DISCOVER',f'mode=manual | images={len(images)} | category={self.category_key}')
+                self.log.emit('SYS','INFO','-','PN_INPUT_DISCOVER',f'mode=manual | images={len(images)} | new_metadata_category={self.category_key} | existing_metadata=preserved')
             else:
                 images = find_images(self.root)
-                self.log.emit('SYS','INFO','-','DISCOVER',f'mode=default | images={len(images)} | category={self.category_key}')
+                self.log.emit('SYS','INFO','-','DISCOVER',f'mode=default | images={len(images)} | new_metadata_category={self.category_key} | existing_metadata=preserved')
             # Existing P2/P3 resume queues are sufficient to run a content-only batch.
             # A blank manual input must not abort the pending Phase3 jobs.
             if not images and not (self._p2q.unfinished_tasks or self._p3q.unfinished_tasks):
