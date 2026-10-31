@@ -1,0 +1,33 @@
+{
+  "_fixture_note": "Synthetic offline-test fixture. Values are for pipeline contract testing only, not a verified product record.",
+  "schema_version": "phase3-final-input-v0.2",
+  "identity": {
+    "part_number": "TC427CPA",
+    "manufacturer": null,
+    "product_type_label": "آی سی",
+    "product_category": "ic",
+    "verified_package_installation": "DIP-8"
+  },
+  "images": [],
+  "seo_context": {
+    "approved_internal_links": [],
+    "approved_external_links": []
+  },
+  "source": {
+    "datasheet_status": "NO_FULL_DATASHEET",
+    "datasheet_path": null,
+    "model_pdf_path": null,
+    "pdf_window": null,
+    "source_validation": "NO_FILE",
+    "fact_status": "NOT_RUN",
+    "useful_fact_count": 0,
+    "facts_path": null,
+    "primary_extraction_path": null,
+    "fallback_extraction_path": null,
+    "coverage_path": null,
+    "pdf_calls": 0,
+    "pdf_fallback_used": false,
+    "priority_fact_coverage": null,
+    "content_mode": "SALES_ONLY_NO_DATASHEET"
+  }
+}
