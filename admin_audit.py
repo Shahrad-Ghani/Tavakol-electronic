@@ -13,6 +13,7 @@ from pypdf import PdfReader
 from bundles.canonical_bundle import build_canonical_bundle, invalidate_bundle
 from core.metadata_v3 import deterministic_product_title, get_category_key, get_part_number, get_source_reference, sync_category
 from core.category_registry import category_context
+from core.category_integrity import assert_upstream_category_consistency
 from core.category_integrity import CategoryConsistencyError, assert_upstream_category_consistency
 
 from metadata_manager import (
@@ -479,7 +480,21 @@ def apply_batch_category(root: Path, metadata_path: Path, data: dict, category_k
     old_key = get_category_key(data)
     # Validate/normalize the requested key without mutating persisted metadata.
     new_key = str(category_context(category_key).get("key") or category_key).strip()
-    if old_key == new_key:
+    category_mismatch = False
+    pn_for_check = get_part_number(data)
+    if old_key == new_key and pn_for_check:
+        p3_path = root / "phase3_outputs" / f"{pn_for_check}.json"
+        integrated_path = root / "products" / f"{pn_for_check}.json"
+        if p3_path.is_file() or integrated_path.is_file():
+            try:
+                p3_doc = _read_json(p3_path) if p3_path.is_file() else None
+                integrated_doc = _read_json(integrated_path) if integrated_path.is_file() else None
+                assert_upstream_category_consistency(data, phase3=p3_doc, integrated=integrated_doc)
+            except Exception:
+                # Metadata can already carry the new category while stale P3 /
+                # integrated artifacts still reflect a previous batch selection.
+                category_mismatch = True
+    if old_key == new_key and not category_mismatch:
         return {"changed": False, "blocked": False, "old_category": old_key, "new_category": new_key}
 
     publishing = data.get("publishing") or {}
