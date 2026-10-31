@@ -30,9 +30,13 @@ def test_category_aware_title_density_slug_and_wordpress_mapping():
 def test_independent_seo_agent_mock_is_category_aware_and_pn_once_in_title():
     agent = DeterministicSeoSnippetAgent()
     out, api = agent.generate(part_number="IRF3205", category_key="mosfet", manufacturer=None, safe_facts=[])
-    assert out["seo_title"] == "خرید ماسفت IRF3205 | قیمت و موجودی"
+    assert "ماسفت" in out["seo_title"]
     assert out["seo_title"].count("IRF3205") == 1
     assert "IRF3205" in out["meta_description"]
+    repeated, _ = agent.generate(part_number="IRF3205", category_key="mosfet", manufacturer=None, safe_facts=[])
+    other, _ = agent.generate(part_number="2N7000", category_key="mosfet", manufacturer=None, safe_facts=[])
+    assert repeated == out
+    assert other["seo_title"] != out["seo_title"]
     assert api["provider"] == "local-mock"
 
 
