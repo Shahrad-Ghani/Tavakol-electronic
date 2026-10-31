@@ -38,6 +38,8 @@ debug_html/*
 !debug_html/.gitkeep
 datasheets/*
 !datasheets/.gitkeep
+datasheets_branded/*
+!datasheets_branded/.gitkeep
 
 # Phase 3 / orchestrator runtime
 phase3_outputs/*
@@ -70,17 +72,11 @@ input_PN/*
 !input_PN/.gitkeep
 
 # ==========================================
-# GLOBAL EXCLUSIONS - ALTIMATE V101
+# GENERATED / USER-SUPPLIED BINARY FILES
 # ==========================================
 
-# All JSON files in all directories
-*.json
-*.JSON
-
-# All datasheet PDF files
-*.pdf
-*.PDF
-
+# PDFs outside the explicitly ignored runtime folders are retained so
+# deterministic test fixtures and documentation assets can be versioned.
 # All product images
 *.jpg
 *.jpeg
