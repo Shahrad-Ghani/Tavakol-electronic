@@ -16,6 +16,7 @@ from metadata_manager import save as save_metadata
 from metadata_manager import portable_path, resolve_recorded_path
 from pipeline import process_one, set_phase1_log_sink
 from admin_audit import (
+    apply_batch_category,
     find_pn_input_images,
     mark_phase1_reprocessed_if_image_only,
     mark_phase3_reprocessed,
@@ -236,8 +237,11 @@ class IntegratedOrchestrator:
                     self.log.emit('P1','WARN',pn,'PN_DUPLICATE',f'PN already claimed by {claimed}; skip queue')
                     return
                 self._pn_owner[pn.casefold()] = source_key
-            sync_category(data, self.category_key)
-            save_metadata(Path(metadata_path), data)
+            category_result = apply_batch_category(self.root, Path(metadata_path), data, self.category_key)
+            if category_result.get("blocked"):
+                self.log.emit("P1", "ERROR", pn, "CATEGORY_CHANGE_BLOCKED",
+                              "This Part Number already has a WordPress product; category was not changed")
+                return
             self.state.update(source_key, part_number=pn, metadata_path=str(metadata_path), phase1="PN_READY")
             authority = str((data.get("ocr") or {}).get("manual_authority") or "OCR")
             self.log.emit("P1", "OK", pn, "PN_READY", f"PartNumber confirmed; authority={authority}; metadata={Path(metadata_path).name}")
@@ -325,6 +329,23 @@ class IntegratedOrchestrator:
             if not pn:
                 continue
             source_key = get_source_reference(data) or pn
+            try:
+                category_result = apply_batch_category(self.root, path, data, self.category_key)
+                if category_result.get("blocked"):
+                    self.log.emit("SYS", "WARN", pn, "CATEGORY_CHANGE_BLOCKED",
+                                  "Existing WordPress product is protected from batch category reassignment")
+                    continue
+                if category_result.get("changed"):
+                    self.log.emit(
+                        "SYS", "WARN" if category_result.get("invalidated_downstream") else "INFO",
+                        pn, "BATCH_CATEGORY_APPLIED",
+                        f"{category_result.get('old_category')} -> {category_result.get('new_category')} | "
+                        f"downstream_invalidated={bool(category_result.get('invalidated_downstream'))}",
+                    )
+                    data = read_json(path)
+            except Exception as exc:
+                self.log.emit("SYS", "ERROR", pn, "BATCH_CATEGORY_FAILED", str(exc))
+                continue
             ds_status = str((data.get("datasheet") or {}).get("status") or "pending")
             audit = data.get("admin_audit") or {}
             audit_status = str(audit.get("status") or "")
