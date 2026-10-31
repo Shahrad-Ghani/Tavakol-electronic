@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/phase3-altimate-product-v1.json",
+  "title": "Tavakol Phase 3 Altimate Product V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "identity",
+    "source",
+    "seo",
+    "page",
+    "snippet",
+    "content",
+    "images",
+    "links",
+    "internal_link_policy",
+    "woocommerce",
+    "generation",
+    "tone_editor",
+    "validation",
+    "evaluation_scorecard",
+    "publishing"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "phase3-altimate-product-v1"
+    },
+    "identity": {
+      "type": "object"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasheet_status",
+        "datasheet_path",
+        "model_pdf_path",
+        "pdf_window",
+        "source_validation",
+        "fact_status",
+        "useful_fact_count",
+        "facts_path",
+        "primary_extraction_path",
+        "fallback_extraction_path",
+        "coverage_path",
+        "pdf_calls",
+        "pdf_fallback_used",
+        "priority_fact_coverage",
+        "content_mode"
+      ],
+      "properties": {
+        "datasheet_status": {
+          "type": "string",
+          "enum": [
+            "FULL_DATASHEET",
+            "NO_FULL_DATASHEET"
+          ]
+        },
+        "datasheet_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_pdf_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pdf_window": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "source_validation": {
+          "type": "string",
+          "enum": [
+            "EXACT_DATASHEET_CONFIRMED",
+            "IDENTITY_NOT_CONFIRMED",
+            "NO_FILE"
+          ]
+        },
+        "fact_status": {
+          "type": "string",
+          "enum": [
+            "SUFFICIENT",
+            "THIN",
+            "INSUFFICIENT",
+            "NOT_RUN"
+          ]
+        },
+        "useful_fact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "facts_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "primary_extraction_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fallback_extraction_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "coverage_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pdf_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "pdf_fallback_used": {
+          "type": "boolean"
+        },
+        "priority_fact_coverage": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "content_mode": {
+          "type": "string",
+          "enum": [
+            "TECHNICAL_LIGHT",
+            "SALES_ONLY_NO_DATASHEET",
+            "SALES_ONLY_INSUFFICIENT_FACTS"
+          ]
+        }
+      }
+    },
+    "seo": {
+      "type": "object"
+    },
+    "page": {
+      "type": "object"
+    },
+    "snippet": {
+      "type": "object"
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "body_markdown",
+        "html_path",
+        "publishing_source",
+        "direction"
+      ],
+      "properties": {
+        "body_markdown": {
+          "type": "string",
+          "minLength": 1
+        },
+        "html_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publishing_source": {
+          "const": "html"
+        },
+        "direction": {
+          "const": "rtl"
+        }
+      }
+    },
+    "images": {
+      "type": "array"
+    },
+    "links": {
+      "type": "object"
+    },
+    "internal_link_policy": {
+      "type": "object"
+    },
+    "woocommerce": {
+      "type": "object"
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_version",
+        "prompt_contract_version",
+        "prompt_sha256",
+        "cheap_writer_model",
+        "expensive_writer_model",
+        "tone_editor_model",
+        "cheap_attempts_used",
+        "expensive_model_used",
+        "escalation_reason",
+        "attempt_scores",
+        "selected_artifact",
+        "attempt_artifacts",
+        "cost_accounting"
+      ],
+      "properties": {
+        "agent_version": {
+          "type": "string"
+        },
+        "prompt_contract_version": {
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "type": "object"
+        },
+        "cheap_writer_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expensive_writer_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tone_editor_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cheap_attempts_used": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "expensive_model_used": {
+          "type": "boolean"
+        },
+        "escalation_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attempt_scores": {
+          "type": "array"
+        },
+        "selected_artifact": {
+          "type": "string"
+        },
+        "attempt_artifacts": {
+          "type": "array"
+        },
+        "cost_accounting": {
+          "type": "object"
+        },
+        "fact_safety_repair_attempts_used": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "tone_editor": {
+      "type": "object"
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "validator_version",
+        "seo_threshold",
+        "final_seo_score",
+        "seo_status",
+        "disposition",
+        "publishable",
+        "hard_gates",
+        "structure_contract",
+        "fact_safety",
+        "style_contract",
+        "final_semantic_audit",
+        "final_semantic_audit_api",
+        "final_semantic_audit_history"
+      ],
+      "properties": {
+        "validator_version": {
+          "type": "string"
+        },
+        "seo_threshold": {
+          "type": "integer"
+        },
+        "final_seo_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "seo_status": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "BELOW_THRESHOLD_FINALIZED",
+            "STRUCTURE_CONTRACT_FAILED",
+            "FACT_SAFETY_FAILED",
+            "HARD_GATE_FAILED",
+            "TONE_REVIEW_REQUIRED",
+            "FINAL_SEMANTIC_AUDIT_FAILED"
+          ]
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "REVIEW_REQUIRED",
+            "HARD_GATE_FAILED"
+          ]
+        },
+        "publishable": {
+          "type": "boolean"
+        },
+        "hard_gates": {
+          "type": "object"
+        },
+        "structure_contract": {
+          "type": "object"
+        },
+        "fact_safety": {
+          "type": "object"
+        },
+        "style_contract": {
+          "type": "object"
+        },
+        "final_semantic_audit": {
+          "type": "object"
+        },
+        "final_semantic_audit_api": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "final_semantic_audit_history": {
+          "type": "array"
+        },
+        "intro_heading": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "expected",
+            "found",
+            "occurrences",
+            "matched_headings",
+            "programmatic_repair_applied"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "PASS",
+                "MISSING"
+              ]
+            },
+            "expected": {
+              "type": "string",
+              "minLength": 1
+            },
+            "found": {
+              "type": "boolean"
+            },
+            "occurrences": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "matched_headings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "programmatic_repair_applied": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "evaluation_scorecard": {
+      "type": "object"
+    },
+    "publishing": {
+      "type": "object"
+    },
+    "seo_snippet_agent": {
+      "type": "object"
+    }
+  }
+}
