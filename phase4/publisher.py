@@ -12,16 +12,14 @@ Contract:
 - Per-product state is stored in runtime_state/publisher/<PN>.json.
 - wordpress_product_id / saved state prevents duplicate product creation.
 
-Required publishing flow:
-1) Product image upload/final selection; ALT = exact product title, media title = PN
-2) Product title + main HTML
-3) Datasheet upload when status=completed; NOT_FOUND_CONFIRMED is valid/no upload
-4) Attributes: Part Number=<PN>; add پکیج only when canonical package is resolved
-5) Category is consumed from the canonical V4 registry/bundle.
-6) Short description = canonical Meta Description.
-7) Rank Math SEO Title + Meta Description + category-aware permalink.
-8) Rank Math focus keyword = exact PN.
-9) Save Draft only.
+Required publishing flow (new-product path; Repair remains a separate tool):
+1) Product title + Phase 3 main HTML.
+2) Product image upload/final selection; ALT = exact product title, media title = PN.
+3) Datasheet upload when status=completed; NOT_FOUND_CONFIRMED is valid/no upload.
+4) Short description and Rank Math snippet from Phase 3 canonical content.
+5) Rank Math focus keyword = exact PN.
+6) Attributes/SKU, then exact parent + child category from the canonical V4 bundle.
+7) Save Draft only. Never update an existing product or click Publish.
 
 Not modified: price, stock quantity, gallery, publish state. SKU is set to exact PN.
 ALLOW_SITE_WRITE must explicitly be true for WordPress mutations.
@@ -300,11 +298,100 @@ def wait_ms(page: Page, ms: Optional[int] = None) -> None:
     page.wait_for_timeout(ms if ms is not None else UI_WAIT_MS)
 
 
+def scroll_nudge_down_up(page: Page, reason: str = "locator retry") -> None:
+    """Nudge the page down and back up before retrying a missing UI target.
+
+    This is a locator/interaction fallback only: it never clicks hidden controls,
+    changes form values, or bypasses WordPress handlers.
+    """
+    try:
+        before = page.evaluate("() => window.scrollY")
+        page.evaluate("(pixels) => window.scrollBy(0, pixels)", 360)
+        page.wait_for_timeout(180)
+        page.evaluate("(pixels) => window.scrollBy(0, -pixels)", 360)
+        page.wait_for_timeout(180)
+        after = page.evaluate("() => window.scrollY")
+        log(f"UI SCROLL RETRY | {reason} | scrollY={before}->{after}")
+    except Exception as exc:
+        log(f"UI SCROLL RETRY UNAVAILABLE | {reason} | {type(exc).__name__}: {exc}")
+
+
+def click_with_scroll_retry(
+    page: Page,
+    locator: Locator,
+    action_label: str,
+    *,
+    timeout_ms: int = 10000,
+    already_done=None,
+) -> None:
+    """Click a resolved locator, nudging the page and retrying actionability once.
+
+    already_done prevents a second click when the first click timed out after its
+    handler had already completed (important for row creation and modal actions).
+    """
+    last_error = None
+    for attempt in range(2):
+        try:
+            locator.scroll_into_view_if_needed(timeout=min(timeout_ms, 4000))
+            locator.click(timeout=timeout_ms)
+            return
+        except Exception as exc:
+            last_error = exc
+            if already_done is not None:
+                try:
+                    if already_done():
+                        log(f"UI CLICK VERIFIED AFTER TIMEOUT | {action_label}")
+                        return
+                except Exception:
+                    pass
+            if attempt == 0:
+                scroll_nudge_down_up(page, action_label)
+                try:
+                    locator.wait_for(state="visible", timeout=min(timeout_ms, 2500))
+                except Exception:
+                    pass
+    raise RuntimeError(
+        f"Click failed after scroll retry | action={action_label} | "
+        f"{type(last_error).__name__}: {last_error}"
+    ) from last_error
+
+
+def check_with_scroll_retry(
+    page: Page,
+    locator: Locator,
+    action_label: str,
+    *,
+    timeout_ms: int = 10000,
+) -> None:
+    """Check a category checkbox with one safe scroll/retry; checking is idempotent."""
+    last_error = None
+    for attempt in range(2):
+        try:
+            locator.scroll_into_view_if_needed(timeout=min(timeout_ms, 4000))
+            locator.check(timeout=timeout_ms)
+            return
+        except Exception as exc:
+            last_error = exc
+            try:
+                if locator.is_checked():
+                    return
+            except Exception:
+                pass
+            if attempt == 0:
+                scroll_nudge_down_up(page, action_label)
+    raise RuntimeError(
+        f"Checkbox check failed after scroll retry | action={action_label} | "
+        f"{type(last_error).__name__}: {last_error}"
+    ) from last_error
+
+
 def first_visible(page: Page, selectors: list[str], timeout_ms: Optional[int] = None) -> Locator:
-    deadline = time.time() + ((timeout_ms or LOCATOR_TIMEOUT_MS) / 1000.0)
+    timeout = timeout_ms if timeout_ms is not None else LOCATOR_TIMEOUT_MS
+    deadline = time.monotonic() + timeout / 1000.0
     last_error = None
 
-    while time.time() < deadline:
+    def find_now() -> Optional[Locator]:
+        nonlocal last_error
         for selector in selectors:
             try:
                 loc = page.locator(selector)
@@ -315,10 +402,30 @@ def first_visible(page: Page, selectors: list[str], timeout_ms: Optional[int] = 
                         return item
             except Exception as exc:
                 last_error = exc
+        return None
+
+    while time.monotonic() < deadline:
+        found = find_now()
+        if found is not None:
+            return found
         page.wait_for_timeout(150)
 
+    # Some WordPress panels and lazy-rendered controls appear only after a
+    # small viewport movement. Probe down/up twice, then resolve the same
+    # selectors again; never fall back to a hidden or approximate element.
+    retry_window = min(1500, max(500, timeout // 4))
+    for attempt in range(2):
+        scroll_nudge_down_up(page, f"missing selector set {selectors!r} (attempt {attempt + 1})")
+        retry_deadline = time.monotonic() + retry_window / 1000.0
+        while time.monotonic() < retry_deadline:
+            found = find_now()
+            if found is not None:
+                return found
+            page.wait_for_timeout(150)
+
     raise RuntimeError(
-        f"No visible locator found. Tried: {selectors}. Last error: {last_error}"
+        f"No visible locator found after scroll retries. Tried: {selectors}. "
+        f"Last error: {last_error}"
     )
 
 
@@ -341,7 +448,8 @@ def close_media_modal_if_open(page: Page) -> None:
                 ],
                 timeout_ms=2500,
             )
-            btn.click(timeout=3000)
+            click_with_scroll_retry(page, btn, "Close WordPress media modal", timeout_ms=3000,
+                          already_done=lambda: page.locator(".media-modal:visible").count() == 0)
             wait_ms(page, 350)
         except Exception:
             try:
@@ -460,7 +568,8 @@ def click_media_select_and_verify_closed(
             f"Final media selection button is still disabled for {expected_filename}"
         )
 
-    btn.click(timeout=10000)
+    click_with_scroll_retry(page, btn, f"Select uploaded media {expected_filename}", timeout_ms=10000,
+                          already_done=lambda: page.locator(".media-modal:visible").count() == 0)
 
     try:
         page.wait_for_function(
@@ -569,11 +678,10 @@ def login(page: Page) -> None:
     username.fill(WP_USERNAME)
     password.fill(WP_PASSWORD)
 
-    try:
-        submit.click(timeout=15000)
-    except PlaywrightTimeoutError:
-        # Form can already be submitted while click waits for navigation.
-        pass
+    click_with_scroll_retry(
+        page, submit, "Submit WordPress login", timeout_ms=15000,
+        already_done=lambda: "/wp-admin/" in page.url or page.locator("#adminmenu").count() > 0,
+    )
 
     try:
         page.wait_for_function(
@@ -649,11 +757,15 @@ def upload_product_image(page: Page, bundle: ProductBundle) -> None:
     pn = bundle.pn
     log(f"{pn} | STEP 1 | Product image upload + final selection")
 
-    first_visible(page, ["#set-post-thumbnail:visible"]).click()
+    click_with_scroll_retry(
+        page, first_visible(page, ["#set-post-thumbnail:visible"]),
+        "Open featured-image media modal",
+        already_done=lambda: page.locator(".media-modal:visible").count() > 0,
+    )
     first_visible(page, [".media-modal:visible"], timeout_ms=10000)
 
     try:
-        first_visible(
+        upload_tab = first_visible(
             page,
             [
                 'button.media-menu-item:has-text("بارگذاری پرونده‌ها"):visible',
@@ -661,7 +773,8 @@ def upload_product_image(page: Page, bundle: ProductBundle) -> None:
                 '.media-router a:has-text("بارگذاری پرونده‌ها"):visible',
             ],
             timeout_ms=3000,
-        ).click()
+        )
+        click_with_scroll_retry(page, upload_tab, "Open WordPress media upload tab", timeout_ms=5000)
         wait_ms(page, 350)
     except Exception:
         pass
@@ -780,11 +893,14 @@ def upload_datasheet(page: Page, bundle: ProductBundle) -> None:
             'button:has-text("افزودن پرونده"):visible',
         ],
     )
-    add_btn.click()
+    click_with_scroll_retry(
+        page, add_btn, "Open datasheet media modal",
+        already_done=lambda: page.locator(".media-modal:visible").count() > 0,
+    )
     first_visible(page, [".media-modal:visible"], timeout_ms=10000)
 
     try:
-        first_visible(
+        upload_tab = first_visible(
             page,
             [
                 'button.media-menu-item:has-text("بارگذاری پرونده‌ها"):visible',
@@ -792,7 +908,8 @@ def upload_datasheet(page: Page, bundle: ProductBundle) -> None:
                 '.media-router a:has-text("بارگذاری پرونده‌ها"):visible',
             ],
             timeout_ms=3000,
-        ).click()
+        )
+        click_with_scroll_retry(page, upload_tab, "Open WordPress media upload tab", timeout_ms=5000)
         wait_ms(page, 350)
     except Exception:
         pass
@@ -902,14 +1019,21 @@ def set_attributes(page: Page, bundle: ProductBundle) -> None:
         log(f"{pn} | MOSFET SPECS UNRESOLVED | {missing} | admin must complete manually")
     close_media_modal_if_open(page)
     wait_for_woocommerce_unblocked(page)
-    first_visible(page, ["li.attribute_options a:visible", 'a[href="#product_attributes"]:visible']).click()
+    click_with_scroll_retry(
+        page, first_visible(page, ["li.attribute_options a:visible", 'a[href="#product_attributes"]:visible']),
+        "Open WooCommerce Attributes tab",
+        already_done=lambda: page.locator("#product_attributes:visible").count() > 0,
+    )
     first_visible(page, ["#product_attributes:visible"])
     rows = page.locator("#product_attributes .product_attributes .woocommerce_attribute")
     add_btn = first_visible(page, ["#product_attributes button.add_custom_attribute:visible", "button.add_custom_attribute:visible"])
     while rows.count() < len(expected):
         wait_for_woocommerce_unblocked(page)
         next_count = rows.count() + 1
-        add_btn.click(timeout=10000)
+        click_with_scroll_retry(
+            page, add_btn, "Add WooCommerce attribute row", timeout_ms=10000,
+            already_done=lambda: rows.count() >= next_count,
+        )
         # Row creation may involve asynchronous WooCommerce scripts.
         page.wait_for_function(
             "(n) => document.querySelectorAll('#product_attributes .product_attributes .woocommerce_attribute').length >= n",
@@ -923,7 +1047,11 @@ def set_attributes(page: Page, bundle: ProductBundle) -> None:
         value = row.locator('textarea[name^="attribute_values["]').input_value().strip()
         if name or value:
             raise RuntimeError(f"Unexpected populated attribute row not safe to remove: {name!r}")
-        row.locator('a.remove_row').click()
+        old_count = rows.count()
+        click_with_scroll_retry(
+            page, row.locator('a.remove_row'), "Remove empty WooCommerce attribute row",
+            already_done=lambda: rows.count() < old_count,
+        )
         wait_for_woocommerce_unblocked(page)
     for i, (name, value) in enumerate(expected):
         row = rows.nth(i)
@@ -944,7 +1072,11 @@ def set_attributes(page: Page, bundle: ProductBundle) -> None:
 
 def set_sku(page: Page, bundle: ProductBundle) -> None:
     """Product Data -> Inventory -> SKU = exact part number."""
-    first_visible(page, ['li.inventory_options a:visible', 'a[href="#inventory_product_data"]:visible']).click()
+    click_with_scroll_retry(
+        page, first_visible(page, ['li.inventory_options a:visible', 'a[href="#inventory_product_data"]:visible']),
+        "Open WooCommerce Inventory tab",
+        already_done=lambda: page.locator("#_sku:visible").count() > 0,
+    )
     sku = first_visible(page, ['#_sku:visible'], timeout_ms=10000)
     previous = sku.input_value().strip()
     if previous and previous.casefold() != bundle.pn.casefold():
@@ -1014,7 +1146,10 @@ def _show_all_product_categories(page: Page) -> None:
         raise RuntimeError('All Categories tab not found')
     try:
         all_tab.first.scroll_into_view_if_needed(timeout=4000)
-        all_tab.first.click(timeout=5000)
+        click_with_scroll_retry(
+            page, all_tab.first, "Open All Product Categories tab", timeout_ms=5000,
+            already_done=lambda: checklist.is_visible(),
+        )
     except Exception:
         # Native DOM click dispatches WordPress's own tab handler; this does NOT
         # click a hidden checkbox, bypass category mapping, or force-save data.
@@ -1035,7 +1170,7 @@ def set_product_category(page: Page, bundle: ProductBundle) -> None:
         wait_for_woocommerce_unblocked(page)
         checkbox = _category_checkbox(page, term_id, label)
         if not checkbox.is_checked():
-            checkbox.check(timeout=12000)
+            check_with_scroll_retry(page, checkbox, f"Select product category {label}", timeout_ms=12000)
         if not checkbox.is_checked():
             raise RuntimeError(f'Category not checked: {label!r}')
     log(f'{pn} | CATEGORY OK | {bundle.category_parent} -> {bundle.category_child}')
@@ -1056,16 +1191,20 @@ def set_rankmath_snippet(page: Page, bundle: ProductBundle) -> None:
     log(f"{pn} | STEP 6 | Rank Math SEO Title + Meta Description + permalink")
     close_media_modal_if_open(page)
     edit_btn = first_visible(page, ["button.rank-math-edit-snippet:visible", 'button:has-text("ویرایش Snippet"):visible'], timeout_ms=10000)
-    edit_btn.click(); wait_ms(page, 650)
+    click_with_scroll_retry(
+        page, edit_btn, "Open Rank Math Edit Snippet",
+        already_done=lambda: page.locator("#rank-math-editor-title:visible").count() > 0,
+    )
+    wait_ms(page, 650)
 
     title = first_visible(page, ["#rank-math-editor-title:visible"], timeout_ms=10000)
     permalink = first_visible(page, ["#rank-math-editor-permalink:visible"], timeout_ms=10000)
     description = first_visible(page, ["#rank-math-editor-description:visible"], timeout_ms=10000)
 
     # Remove default %title% %sep% %sitename% template before writing canonical V4 title.
-    title.click(); title.press("Control+A"); title.fill(""); title.fill(bundle.seo_title); dispatch_value_events(title)
-    permalink.click(); permalink.press("Control+A"); permalink.fill(bundle.slug); dispatch_value_events(permalink)
-    description.click(); description.press("Control+A"); description.fill(bundle.meta_description); dispatch_value_events(description)
+    title.press("Control+A"); title.fill(bundle.seo_title); dispatch_value_events(title)
+    permalink.press("Control+A"); permalink.fill(bundle.slug); dispatch_value_events(permalink)
+    description.press("Control+A"); description.fill(bundle.meta_description); dispatch_value_events(description)
     wait_ms(page, 500)
     if title.input_value().strip() != bundle.seo_title:
         raise RuntimeError("Rank Math SEO title verification failed")
@@ -1079,7 +1218,10 @@ def set_rankmath_snippet(page: Page, bundle: ProductBundle) -> None:
     if frame.count():
         close_btn = frame.first.locator('button.components-modal__header-button, button[aria-label="بستن"], button[aria-label="Close"]')
         if close_btn.count():
-            close_btn.first.click()
+            click_with_scroll_retry(
+                page, close_btn.first, "Close Rank Math snippet modal",
+                already_done=lambda: page.locator("#rank-math-editor-title:visible").count() == 0,
+            )
         else:
             page.keyboard.press('Escape')
     else:
@@ -1109,7 +1251,7 @@ def set_focus_keyword(page: Page, bundle: ProductBundle) -> None:
 
     tag_name = focus.evaluate("el => el.tagName.toLowerCase()")
 
-    focus.click()
+    click_with_scroll_retry(page, focus, "Focus Rank Math keyword field")
 
     if tag_name == "input":
         focus.fill("")
@@ -1192,7 +1334,10 @@ def verify_saved_draft(page: Page, bundle: ProductBundle) -> list[str]:
 
     def seo_check():
         edit_btn = first_visible(page, ['button.rank-math-edit-snippet:visible', 'button:has-text("ویرایش Snippet"):visible'], timeout_ms=10000)
-        edit_btn.click()
+        click_with_scroll_retry(
+            page, edit_btn, "Open Rank Math snippet for saved-draft verification",
+            already_done=lambda: page.locator("#rank-math-editor-title:visible").count() > 0,
+        )
         wait_ms(page, 350)
         fields = (('SEO title','#rank-math-editor-title',bundle.seo_title),
                   ('permalink','#rank-math-editor-permalink',bundle.slug),
@@ -1219,7 +1364,21 @@ def save_draft(page: Page, bundle: ProductBundle) -> tuple[Optional[str], str]:
     save_btn = first_visible(page, ["#save-post:visible"])
     if not save_btn.is_enabled():
         raise RuntimeError('WordPress Save Draft button is disabled')
-    save_btn.click(timeout=15000)
+    try:
+        save_btn.click(timeout=15000)
+    except Exception as exc:
+        scroll_nudge_down_up(page, "Save Draft click handler")
+        # A click timeout can occur after WordPress has already accepted the save.
+        # Never issue a second Save Draft click; first check whether a post ID appears.
+        try:
+            page.wait_for_function(
+                "() => location.href.includes('post.php') && new URL(location.href).searchParams.has('post')",
+                timeout=10000,
+            )
+        except Exception:
+            raise RuntimeError(
+                f"Save Draft click did not complete after scroll retry; not clicked twice to avoid duplicates: {exc}"
+            ) from exc
 
     # WordPress usually navigates to post.php?post=<ID>&action=edit.
     try:
@@ -1347,6 +1506,9 @@ def publish_one(page: Page, bundle: ProductBundle, store: PublisherStateStore) -
         )
 
     try:
+        # Phase 4 creates NEW products only. This exact, read-only lookup is
+        # duplicate protection; it never opens or edits an existing post.
+        # MOSFET Repair tools remain independent and are not called here.
         existing = locate_existing_wordpress_product(page, bundle)
         if existing:
             wp_id, edit_url = existing
@@ -1368,16 +1530,19 @@ def publish_one(page: Page, bundle: ProductBundle, store: PublisherStateStore) -
         sync_publisher_summary_to_metadata(RUNTIME_ROOT, pn, state)
         return ProductRunResult(pn=pn, status="WP_FAILED", error=err)
 
+    # New-product sequence: title/content -> image/PDF -> Phase 3 short description
+    # and SEO snippet -> focus keyword -> attributes/SKU -> exact parent/child category.
+    # Existing-product Repair is intentionally separate from this publisher.
     steps = [
+        ("title_content", "Product title + Phase 3 main content", set_title_and_main_content),
         ("image", "Product image upload + final selection", upload_product_image),
-        ("title_content", "Product title + main content", set_title_and_main_content),
         ("datasheet", "Datasheet upload/final selection", upload_datasheet),
+        ("short_description", "Phase 3 short description", set_short_description),
+        ("snippet", "Rank Math SEO title + Phase 3 snippet description", set_rankmath_snippet),
+        ("focus_keyword", "Rank Math Focus Keyword", set_focus_keyword),
         ("attributes", "WooCommerce Attributes", set_attributes),
         ("sku", "WooCommerce Inventory SKU", set_sku),
-        ("category", "WooCommerce Category", set_product_category),
-        ("short_description", "Short Description", set_short_description),
-        ("snippet", "Rank Math SEO snippet", set_rankmath_snippet),
-        ("focus_keyword", "Rank Math Focus Keyword", set_focus_keyword),
+        ("category", "WooCommerce parent + child category", set_product_category),
     ]
 
     for key, label, fn in steps:
