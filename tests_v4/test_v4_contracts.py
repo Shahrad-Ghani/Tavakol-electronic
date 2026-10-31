@@ -136,6 +136,18 @@ def test_phase4_publisher_uses_new_product_flow_and_phase3_content():
     assert 'set_editor_html(page, "excerpt", bundle.short_description_html)' in source
     assert 'title.fill(bundle.seo_title)' in source
     assert 'description.fill(bundle.meta_description)' in source
+    assert 'pn.casefold() not in seo_title.casefold()' in source
+    save_draft = next(
+        node for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "save_draft"
+    )
+    save_clicks = [
+        node for node in ast.walk(save_draft)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "click"
+    ]
+    assert len(save_clicks) == 1  # no blind second Save Draft click
     assert 'store.duplicate_guard(pn)' in source
     assert 'locate_existing_wordpress_product(page, bundle)' in source
     assert 'wp_repair' not in source.lower()
