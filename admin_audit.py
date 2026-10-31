@@ -12,6 +12,7 @@ from pypdf import PdfReader
 
 from bundles.canonical_bundle import build_canonical_bundle, invalidate_bundle
 from core.metadata_v3 import deterministic_product_title, get_category_key, get_part_number, get_source_reference, sync_category
+from core.category_registry import category_context
 from core.category_integrity import CategoryConsistencyError, assert_upstream_category_consistency
 
 from metadata_manager import (
@@ -476,10 +477,8 @@ def apply_batch_category(root: Path, metadata_path: Path, data: dict, category_k
     root = Path(root).resolve()
     metadata_path = Path(metadata_path).resolve()
     old_key = get_category_key(data)
-
-    # sync_category validates/normalizes the requested key through the registry.
-    sync_category(data, category_key)
-    new_key = get_category_key(data)
+    # Validate/normalize the requested key without mutating persisted metadata.
+    new_key = str(category_context(category_key).get("key") or category_key).strip()
     if old_key == new_key:
         return {"changed": False, "blocked": False, "old_category": old_key, "new_category": new_key}
 
@@ -513,6 +512,7 @@ def apply_batch_category(root: Path, metadata_path: Path, data: dict, category_k
     if has_downstream and pn:
         archive = _archive_dir(root, source_ref, f"category_change_{old_key}_to_{new_key}")
         _copy_if_exists(metadata_path, archive / "metadata_before")
+        sync_category(data, new_key)
 
         # Preserve old outputs for audit/history; they must not be consumed under
         # the newly selected category.
@@ -563,7 +563,8 @@ def apply_batch_category(root: Path, metadata_path: Path, data: dict, category_k
             "updated_at": utc_now(),
         })
 
-    sync_category(data, new_key)
+    if not has_downstream:
+        sync_category(data, new_key)
     if pn:
         data["product_title"] = deterministic_product_title(pn, new_key)
     save_admin_override(metadata_path, data)
