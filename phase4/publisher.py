@@ -469,12 +469,15 @@ def active_media_file_input(page: Page) -> Locator:
         '.media-modal:visible .moxie-shim input[type="file"]',
         '.media-modal:visible input[type="file"]',
     ]
-    for selector in selectors:
-        loc = page.locator(selector)
-        if loc.count() > 0:
-            # Last plupload input is generally the active shim in WordPress.
-            return loc.last
-    raise RuntimeError("Active WordPress media file input not found")
+    for attempt in range(2):
+        for selector in selectors:
+            loc = page.locator(selector)
+            if loc.count() > 0:
+                # Last plupload input is generally the active shim in WordPress.
+                return loc.last
+        if attempt == 0:
+            scroll_nudge_down_up(page, "Active WordPress media file input")
+    raise RuntimeError("Active WordPress media file input not found after scroll retry")
 
 
 
@@ -615,30 +618,32 @@ def set_editor_html(page: Page, editor_id: str, html: str) -> None:
     Set both TinyMCE (if active) and backing textarea.
     This is required because #content and #excerpt are hidden in Visual mode.
     """
-    ok = page.evaluate(
-        """([editorId, html]) => {
-            let changed = false;
-            try {
-                if (window.tinymce && tinymce.get(editorId)) {
-                    tinymce.get(editorId).setContent(html);
-                    tinymce.get(editorId).fire('change');
-                    changed = true;
-                }
-            } catch (e) {}
-
-            const el = document.getElementById(editorId);
-            if (el) {
-                el.value = html;
-                el.dispatchEvent(new Event('input', {bubbles: true}));
-                el.dispatchEvent(new Event('change', {bubbles: true}));
+    script = """([editorId, html]) => {
+        let changed = false;
+        try {
+            if (window.tinymce && tinymce.get(editorId)) {
+                tinymce.get(editorId).setContent(html);
+                tinymce.get(editorId).fire('change');
                 changed = true;
             }
-            return changed;
-        }""",
-        [editor_id, html],
-    )
-    if not ok:
-        raise RuntimeError(f"Editor not found: #{editor_id}")
+        } catch (e) {}
+
+        const el = document.getElementById(editorId);
+        if (el) {
+            el.value = html;
+            el.dispatchEvent(new Event('input', {bubbles: true}));
+            el.dispatchEvent(new Event('change', {bubbles: true}));
+            changed = true;
+        }
+        return changed;
+    }"""
+    for attempt in range(2):
+        ok = page.evaluate(script, [editor_id, html])
+        if ok:
+            return
+        if attempt == 0:
+            scroll_nudge_down_up(page, f"WordPress editor #{editor_id}")
+    raise RuntimeError(f"Editor not found after scroll retry: #{editor_id}")
 
 
 def login(page: Page) -> None:
