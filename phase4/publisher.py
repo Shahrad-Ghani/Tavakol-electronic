@@ -241,6 +241,8 @@ def build_bundle(bundle_dir: Path) -> ProductBundle:
     meta_description = str(seo.get("meta_description") or "").strip()
     if not slug or not seo_title or not meta_description:
         raise ValueError("Canonical V4 SEO fields are incomplete")
+    if pn.casefold() not in seo_title.casefold():
+        raise ValueError(f"Canonical Rank Math SEO title must include the exact Part Number {pn!r}")
 
     return ProductBundle(
         pn=pn, title=title, package=package, html_path=html_path, html=html,
