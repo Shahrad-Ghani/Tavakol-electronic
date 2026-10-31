@@ -11,7 +11,7 @@ from typing import Any
 from pypdf import PdfReader
 
 from bundles.canonical_bundle import build_canonical_bundle, invalidate_bundle
-from core.metadata_v3 import deterministic_product_title, get_part_number, get_source_reference
+from core.metadata_v3 import deterministic_product_title, get_category_key, get_part_number, get_source_reference, sync_category
 from core.category_integrity import CategoryConsistencyError, assert_upstream_category_consistency
 
 from metadata_manager import (
@@ -464,6 +464,117 @@ def ensure_admin_audit(data: dict) -> dict:
 def stage_ready_for_upload(root: Path, meta_path: Path, data: dict) -> Path:
     """Compatibility wrapper; V3 staging is the canonical bundle builder."""
     return build_canonical_bundle(root, meta_path, data)
+
+
+def apply_batch_category(root: Path, metadata_path: Path, data: dict, category_key: str) -> dict:
+    """Apply the explicit UI batch category and invalidate category-dependent outputs.
+
+    A category change is a content change: it affects the title, SEO, internal links,
+    technical-fact priorities and WooCommerce taxonomy. Existing WordPress products
+    are never silently reclassified by this helper.
+    """
+    root = Path(root).resolve()
+    metadata_path = Path(metadata_path).resolve()
+    old_key = get_category_key(data)
+
+    # sync_category validates/normalizes the requested key through the registry.
+    sync_category(data, category_key)
+    new_key = get_category_key(data)
+    if old_key == new_key:
+        return {"changed": False, "blocked": False, "old_category": old_key, "new_category": new_key}
+
+    publishing = data.get("publishing") or {}
+    wordpress_product_id = str(publishing.get("wordpress_product_id") or "").strip()
+    if wordpress_product_id:
+        return {
+            "changed": False,
+            "blocked": True,
+            "reason": "WORDPRESS_PRODUCT_ALREADY_EXISTS",
+            "wordpress_product_id": wordpress_product_id,
+            "old_category": old_key,
+            "new_category": new_key,
+        }
+
+    pn = get_part_number(data)
+    source_ref = get_source_reference(data) or metadata_path.stem
+    phase3_state = data.get("phase3") or {}
+    audit_state = data.get("admin_audit") or {}
+    bundle_dir = root / "ready_for_upload" / pn if pn else None
+    has_downstream = bool(
+        (pn and (root / "phase3_outputs" / f"{pn}.json").exists())
+        or (pn and (root / "phase3_outputs" / f"{pn}.html").exists())
+        or (pn and (root / "products" / f"{pn}.json").exists())
+        or (bundle_dir and bundle_dir.exists())
+        or str(phase3_state.get("status") or "").lower() == "completed"
+        or str(audit_state.get("status") or "").upper() == "APPROVED"
+        or str(publishing.get("bundle_status") or "").upper() == "READY"
+    )
+
+    if has_downstream and pn:
+        archive = _archive_dir(root, source_ref, f"category_change_{old_key}_to_{new_key}")
+        _copy_if_exists(metadata_path, archive / "metadata_before")
+
+        # Preserve old outputs for audit/history; they must not be consumed under
+        # the newly selected category.
+        _invalidate_phase3(root, pn, archive, keep_cache=False)
+        _invalidate_fact_extraction(root, pn, archive)
+        invalidate_bundle(root, metadata_path, data, reason=f"category changed: {old_key} -> {new_key}")
+
+        audit = ensure_admin_audit(data)
+        audit["history"].append({
+            "action": "BATCH_CATEGORY_CHANGED",
+            "at": utc_now(),
+            "part_number": pn,
+            "previous_category": old_key,
+            "selected_category": new_key,
+            "archive": portable_path(root, archive),
+        })
+        audit.update({
+            "status": "DISAPPROVED_PENDING_REPROCESS",
+            "selected_issues": ["category_changed"],
+            "previous_category_key": old_key,
+            "selected_category_key": new_key,
+            "force_phase1": False,
+            "force_phase2": False,
+            "force_seo": True,
+            "force_fact_extraction": True,
+            "ready_bundle": None,
+            "last_decision_at": utc_now(),
+            "last_error": None,
+        })
+        data.setdefault("phase3", {}).update({
+            "status": "pending",
+            "content_status": "pending",
+            "json_file": None,
+            "content_file": None,
+            "last_error": None,
+        })
+        data.setdefault("publishing", {}).update({
+            "release_allowed": False,
+            "release_source": None,
+            "bundle_status": "INVALIDATED",
+            "bundle_path": None,
+            "status": "NOT_STARTED",
+            "successful": None,
+            "wordpress_product_id": None,
+            "wordpress_edit_url": None,
+            "completed_with_warnings": False,
+            "step_errors": {},
+            "updated_at": utc_now(),
+        })
+
+    sync_category(data, new_key)
+    if pn:
+        data["product_title"] = deterministic_product_title(pn, new_key)
+    save_admin_override(metadata_path, data)
+    return {
+        "changed": True,
+        "blocked": False,
+        "invalidated_downstream": has_downstream,
+        "old_category": old_key,
+        "new_category": new_key,
+        "part_number": pn or None,
+    }
 
 
 def approve_item(root: Path, metadata_path: Path) -> dict:
@@ -980,12 +1091,23 @@ def prepare_pn_input_metadata(root: Path, image: Path) -> tuple[Path, dict]:
 
 
 def find_pn_input_images(root: Path) -> list[Path]:
-    # V4 canonical manual-input folder is input_PN/.  PN_input/ remains a
-    # compatibility fallback for older V3 worktrees only when input_PN does
-    # not exist at all. Final V4 repositories ship input_PN/.
+    """Discover trusted-PN images from both supported folder spellings.
+
+    Some deployed worktrees use PN_input/ while newer V4 worktrees use input_PN/.
+    Both are valid inputs; an existing but empty canonical folder must not hide
+    files placed in the compatibility folder.
+    """
     root = Path(root)
-    canonical = root / "input_PN"
-    folder = canonical if canonical.exists() else (root / "PN_input")
-    if not folder.exists():
-        return []
-    return sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in SUPPORTED_IMAGES)
+    found = []
+    seen = set()
+    for folder in (root / "input_PN", root / "PN_input"):
+        if not folder.is_dir():
+            continue
+        for path in folder.iterdir():
+            if not path.is_file() or path.suffix.lower() not in SUPPORTED_IMAGES:
+                continue
+            key = str(path.resolve()).casefold()
+            if key not in seen:
+                seen.add(key)
+                found.append(path)
+    return sorted(found, key=lambda p: (p.stem.casefold(), p.parent.name.casefold(), p.name.casefold()))
