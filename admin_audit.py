@@ -13,7 +13,6 @@ from pypdf import PdfReader
 from bundles.canonical_bundle import build_canonical_bundle, invalidate_bundle
 from core.metadata_v3 import deterministic_product_title, get_category_key, get_part_number, get_source_reference, sync_category
 from core.category_registry import category_context
-from core.category_integrity import assert_upstream_category_consistency
 from core.category_integrity import CategoryConsistencyError, assert_upstream_category_consistency
 
 from metadata_manager import (
