@@ -1069,15 +1069,16 @@ def mark_phase1_reprocessed_if_image_only(meta_path: Path) -> None:
         save_audit_phase_state(meta_path, data)
 
 
-def prepare_pn_input_metadata(root: Path, image: Path) -> tuple[Path, dict]:
+def prepare_pn_input_metadata(root: Path, image: Path, category_key: str | None = None) -> tuple[Path, dict]:
     root = Path(root).resolve(); image = Path(image).resolve()
     pn = _safe_pn(image.stem)
-    meta_path, data = load_or_create(root, pn)
+    # Selected category is a default for a genuinely new PN record only.
+    meta_path, data = load_or_create(root, pn, category=category_key or "ic")
     existing_pn = str(data.get("part_number") or "").strip()
     if existing_pn and existing_pn.casefold() != pn.casefold():
         raise RuntimeError(f"PN_input filename {pn} conflicts with existing metadata PartNumber {existing_pn}")
     data["part_number"] = pn
-    data["product_title"] = deterministic_product_title(pn)
+    data["product_title"] = deterministic_product_title(pn, get_category_key(data))
     data["source_reference"] = pn
     source_folder = image.parent.name if image.parent.name in {"input_PN", "PN_input"} else "input_PN"
     data["original_image"] = {
