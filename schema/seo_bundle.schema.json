@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/phase3b-seo-bundle-v0.1.json",
+  "title": "Tavakol Phase 3B SEO Bundle V0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "identity",
+    "content",
+    "page",
+    "snippet",
+    "seo",
+    "images",
+    "links",
+    "technical_safety",
+    "source",
+    "generation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "phase3b-seo-bundle-v0.1"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_number",
+        "manufacturer",
+        "product_category",
+        "content_mode"
+      ],
+      "properties": {
+        "part_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "product_category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "content_mode": {
+          "type": "string",
+          "enum": [
+            "TECHNICAL_LIGHT",
+            "SALES_ONLY_NO_DATASHEET",
+            "SALES_ONLY_INSUFFICIENT_FACTS",
+            "BLOCKED_IDENTITY"
+          ]
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "body_markdown"
+      ],
+      "properties": {
+        "body_markdown": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_title",
+        "slug",
+        "canonical_url"
+      ],
+      "properties": {
+        "product_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "canonical_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "snippet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seo_title",
+        "meta_description"
+      ],
+      "properties": {
+        "seo_title": {
+          "type": "string"
+        },
+        "meta_description": {
+          "type": "string"
+        }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "focus_keyword"
+      ],
+      "properties": {
+        "focus_keyword": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filename",
+          "path",
+          "alt",
+          "is_primary"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "alt": {
+            "type": "string"
+          },
+          "is_primary": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "internal",
+        "external"
+      ],
+      "properties": {
+        "internal": {
+          "$ref": "#/$defs/linkList"
+        },
+        "external": {
+          "$ref": "#/$defs/linkList"
+        }
+      }
+    },
+    "technical_safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facts_path",
+        "fact_status"
+      ],
+      "properties": {
+        "facts_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fact_status": {
+          "type": "string",
+          "enum": [
+            "SUFFICIENT",
+            "THIN",
+            "INSUFFICIENT",
+            "NOT_RUN"
+          ]
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasheet_status",
+        "datasheet_path"
+      ],
+      "properties": {
+        "datasheet_status": {
+          "type": "string",
+          "enum": [
+            "FULL_DATASHEET",
+            "NO_FULL_DATASHEET"
+          ]
+        },
+        "datasheet_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generator_version",
+        "attempt"
+      ],
+      "properties": {
+        "generator_version": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "$defs": {
+    "linkList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nofollow": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    }
+  }
+}
