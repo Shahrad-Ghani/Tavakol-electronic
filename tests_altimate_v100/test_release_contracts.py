@@ -47,16 +47,35 @@ def test_api_cooldown_has_no_arbitrary_default_delay():
 
 
 def test_accept_existing_canvas_without_any_model_calls(tmp_path):
-    root=Path(__file__).resolve().parents[1]
+    from PIL import Image, ImageDraw
+
     pn='SSP5N90A'
-    for d in ('metadata','output','assets'):
-        (tmp_path/d).mkdir()
-    shutil.copy2(root/'metadata'/f'{pn}.json', tmp_path/'metadata'/f'{pn}.json')
-    shutil.copy2(root/'output'/f'{pn}_canvas.png', tmp_path/'output'/f'{pn}_canvas.png')
-    shutil.copy2(root/'assets/store_logo.png', tmp_path/'assets/store_logo.png')
-    result=accept_rejected_image(tmp_path,tmp_path/'metadata'/f'{pn}.json')
+    meta_path, data = load_or_create(tmp_path, pn, 'ic')
+    data['part_number'] = pn
+    data['identity_validation']['status'] = 'rejected'
+    data['identity_validation']['issues'] = ['synthetic_test_rejection']
+    data['admin_audit']['status'] = 'PENDING_REVIEW'
+    save(meta_path, data)
+
+    output_dir = tmp_path / 'output'
+    assets_dir = tmp_path / 'assets'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    # Synthetic local image and logo: this test must not depend on ignored
+    # production metadata, generated canvases, or private user assets.
+    canvas = Image.new('RGB', (600, 600), 'white')
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle((150, 180, 450, 420), fill=(40, 70, 100))
+    canvas.save(output_dir / f'{pn}_canvas.png')
+
+    logo = Image.new('RGBA', (160, 60), (0, 0, 0, 0))
+    ImageDraw.Draw(logo).rectangle((0, 0, 159, 59), fill=(20, 20, 20, 255))
+    logo.save(assets_dir / 'store_logo.png')
+
+    result=accept_rejected_image(tmp_path, meta_path)
     assert Path(result['final_path']).exists()
-    persisted=json.loads((tmp_path/'metadata'/f'{pn}.json').read_text(encoding='utf-8'))
+    persisted=json.loads(meta_path.read_text(encoding='utf-8'))
     assert persisted['image_optimization']['status'] == 'completed'
     assert persisted['identity_validation']['history'][-1]['action'] == 'ADMIN_ACCEPTED_AFTER_REJECTION'
     assert persisted['admin_audit']['history'][-1]['action'] == 'ADMIN_ACCEPTED_REJECTED_IMAGE'
