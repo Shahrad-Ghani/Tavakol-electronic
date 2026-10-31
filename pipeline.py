@@ -394,9 +394,11 @@ def _validate_existing_candidate(client, source: Path, canvas: Path, ref: str, m
         return None
 
 
-def process_one(client, source: Path, log_file: Path, phase2_coordinator=None, on_part_number_ready=None):
+def process_one(client, source: Path, log_file: Path, phase2_coordinator=None, on_part_number_ready=None, category_key: str | None = None):
     ref = source.stem
-    meta_path, data = load_or_create(ROOT, ref)
+    # The batch category is used only if this source has no metadata yet.
+    # load_or_create deliberately preserves the category of existing records.
+    meta_path, data = load_or_create(ROOT, ref, category=category_key or "ic")
 
     log(f"[START] {ref} | source={source.name}", log_file)
 
