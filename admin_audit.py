@@ -1106,23 +1106,17 @@ def prepare_pn_input_metadata(root: Path, image: Path) -> tuple[Path, dict]:
 
 
 def find_pn_input_images(root: Path) -> list[Path]:
-    """Discover trusted-PN images from both supported folder spellings.
+    """Discover trusted-PN images using the V4 canonical folder first.
 
-    Some deployed worktrees use PN_input/ while newer V4 worktrees use input_PN/.
-    Both are valid inputs; an existing but empty canonical folder must not hide
-    files placed in the compatibility folder.
+    input_PN/ is canonical. PN_input/ remains a migration fallback only when
+    input_PN/ does not exist, preserving the established V4 folder contract.
     """
     root = Path(root)
-    found = []
-    seen = set()
-    for folder in (root / "input_PN", root / "PN_input"):
-        if not folder.is_dir():
-            continue
-        for path in folder.iterdir():
-            if not path.is_file() or path.suffix.lower() not in SUPPORTED_IMAGES:
-                continue
-            key = str(path.resolve()).casefold()
-            if key not in seen:
-                seen.add(key)
-                found.append(path)
-    return sorted(found, key=lambda p: (p.stem.casefold(), p.parent.name.casefold(), p.name.casefold()))
+    canonical = root / "input_PN"
+    folder = canonical if canonical.exists() else (root / "PN_input")
+    if not folder.is_dir():
+        return []
+    return sorted(
+        p for p in folder.iterdir()
+        if p.is_file() and p.suffix.lower() in SUPPORTED_IMAGES
+    )
