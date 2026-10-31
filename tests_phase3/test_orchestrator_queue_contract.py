@@ -2,15 +2,16 @@ from pathlib import Path
 
 from orchestrator.engine import IntegratedOrchestrator
 from orchestrator.events import EventLogger
+from metadata_manager import load_or_create, save
 
 
 def test_part_number_callback_queues_phase2_immediately_and_only_once(tmp_path):
     logger=EventLogger(tmp_path)
     orch=IntegratedOrchestrator(tmp_path,logger)
-    meta=tmp_path/'metadata'/'TC427CPA.json'
-    meta.parent.mkdir(parents=True,exist_ok=True)
+    meta,data=load_or_create(tmp_path,'TC427CPA','ic')
+    data['part_number']='TC427CPA'
+    save(meta,data)
     cb=orch._pn_ready_callback('image_001')
-    data={'PartNumber':'TC427CPA'}
     cb(meta,data,'image_001')
     assert orch._p2q.qsize()==1
     state=orch.state.load('image_001')
