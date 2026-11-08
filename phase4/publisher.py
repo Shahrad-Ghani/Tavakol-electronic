@@ -1106,8 +1106,38 @@ def set_sku(page: Page, bundle: ProductBundle) -> None:
 
 
 # Legacy V3 example mapping was: قطعات الکترونیکی -> "آی سی". V4 is registry-driven.
+def normalize_category_label(value: str) -> str:
+    """Normalize harmless Persian typography differences for exact term matching.
+
+    In particular, Persian ZWNJ (U+200C) and ordinary spaces are equivalent
+    for category-name comparison. Meaningful words and punctuation are kept.
+    """
+    import unicodedata
+
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = text.replace("\u200c", " ").replace("\u00a0", " ")
+    for mark in ("\u200e", "\u200f", "\u061c"):
+        text = text.replace(mark, "")
+    return re.sub(r"\s+", " ", text).strip().casefold()
+
+
+def _wordpress_category_label_text(locator: Locator) -> str:
+    """Read a category label without Rank Math's appended primary-term action."""
+    raw_label = locator.evaluate(
+        r"""(element) => {
+            const cloned = element.cloneNode(true);
+            cloned.querySelectorAll('button, a, [role="button"]').forEach(node => node.remove());
+            return cloned.textContent || '';
+        }"""
+    )
+    return re.sub(
+        r'(?i)\s*(?:Make\s+Term\s+Primary|Remove\s+Primary\s+Term)\s*$',
+        '', raw_label
+    ).strip()
+
+
 def _category_checkbox(page: Page, term_id: int, exact_label: str, *, require_visible: bool = True) -> Locator:
-    """Resolve only exact terms from the ALL categories list, never Popular.
+    """Resolve only the exact canonical term, tolerating Persian ZWNJ/space variants.
 
     Preflight and post-save verification can safely inspect a hidden checklist;
     setting a category must always use a visible checkbox on the active tab.
@@ -1125,45 +1155,51 @@ def _category_checkbox(page: Page, term_id: int, exact_label: str, *, require_vi
             checklist = page.locator('#product_catchecklist')
             cb = checklist.locator(f'input[name="tax_input[product_cat][]"][value="{term_id}"]')
         if cb.count() == 1:
-            # CATEGORY_HOTFIX_V2: Rank Math can inject "Make Term Primary"
-            # either inside child elements OR directly into label text nodes.
-            # Exclude interactive child controls and remove ONLY the known
-            # suffix; the exact WordPress term ID/name check stays mandatory.
-            raw_label = cb.locator('xpath=..').evaluate(
-                r"""(element) => {
-                    const cloned = element.cloneNode(true);
-                    cloned.querySelectorAll('button, a, [role="button"]').forEach(node => node.remove());
-                    return cloned.textContent || '';
-                }"""
+            label = _wordpress_category_label_text(cb.locator('xpath=..'))
+            log(
+                f'CATEGORY NORMALIZATION | term={term_id} | '
+                f'observed={label!r} | normalized={normalize_category_label(label)!r}'
             )
-            label = re.sub(
-                r'(?i)\s*(?:Make\s+Term\s+Primary|Remove\s+Primary\s+Term)\s*$',
-                '', raw_label
-            ).strip()
-            label = re.sub(r'\s+', ' ', label)
-            log(f'CATEGORY HOTFIX V2 | term={term_id} | observed={raw_label.strip()!r} | normalized={label!r}')
-            if re.sub(r'\s+', ' ', label).casefold() != re.sub(r'\s+', ' ', exact_label).casefold():
-                raise RuntimeError(f'WordPress term {term_id} name mismatch: {label!r} != {exact_label!r}')
+            if normalize_category_label(label) != normalize_category_label(exact_label):
+                raise RuntimeError(
+                    f'WordPress term {term_id} name mismatch: {label!r} != {exact_label!r}'
+                )
             if require_visible and not cb.is_visible():
                 scroll_nudge_down_up(page, f"WordPress category checkbox {exact_label}")
                 if not cb.is_visible():
                     raise RuntimeError(f'WordPress category checkbox is not visible: {exact_label!r}')
             return cb
-    # Resolve exact category labels only; no fuzzy category fallback.
-    exact_pattern = re.compile(r'^\s*' + re.escape(exact_label) + r'\s*$')
-    matches = checklist.locator('label.selectit').filter(has_text=exact_pattern)
-    if matches.count() != 1:
+
+    # Exact normalized comparison is used as fallback when a term ID is unavailable.
+    # Do not use fuzzy matching: multiple or merely similar categories must fail closed.
+    labels = checklist.locator('label.selectit')
+    expected_label = normalize_category_label(exact_label)
+    matches = []
+    for index in range(labels.count()):
+        candidate = labels.nth(index)
+        candidate_text = _wordpress_category_label_text(candidate)
+        if normalize_category_label(candidate_text) == expected_label:
+            matches.append(candidate)
+
+    if len(matches) != 1:
         scroll_nudge_down_up(page, f"WordPress category label {exact_label}")
         checklist = page.locator('#product_catchecklist')
-        matches = checklist.locator('label.selectit').filter(has_text=exact_pattern)
-    if matches.count() != 1:
+        labels = checklist.locator('label.selectit')
+        matches = []
+        for index in range(labels.count()):
+            candidate = labels.nth(index)
+            candidate_text = _wordpress_category_label_text(candidate)
+            if normalize_category_label(candidate_text) == expected_label:
+                matches.append(candidate)
+
+    if len(matches) != 1:
         raise RuntimeError(
-            f'Existing WordPress category not unique/found after scroll retry: {exact_label!r}'
+            f'Existing WordPress category not unique/found after normalized exact match: {exact_label!r}'
         )
-    cb = matches.first.locator('input[type="checkbox"]')
+    cb = matches[0].locator('input[type="checkbox"]')
     if cb.count() != 1:
         scroll_nudge_down_up(page, f"WordPress category checkbox {exact_label}")
-        cb = matches.first.locator('input[type="checkbox"]')
+        cb = matches[0].locator('input[type="checkbox"]')
     if cb.count() != 1:
         raise RuntimeError(f'WordPress category checkbox not uniquely found: {exact_label!r}')
     if require_visible and not cb.is_visible():
