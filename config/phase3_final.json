@@ -1,0 +1,84 @@
+{
+  "pipeline_version": "phase3-ALitmate-v1.2",
+  "fact_extraction_version": "phase3-fact-extraction-v1",
+  "agent_version": "phase3-content-agent-altimate-v1.1-frozen",
+  "validator_version": "phase3b-validator-v0.1.1-frozen",
+  "seo_threshold": 80,
+  "cheap_writer_max_attempts": 2,
+  "expensive_writer_max_attempts": 0,
+  "pdf_primary_model": "gpt-5.6-luna",
+  "pdf_max_calls_per_product": 1,
+  "pdf_first_pages": 5,
+  "fact_extraction_max_facts": 16,
+  "fact_coverage": {
+    "minimum_useful_facts": 5,
+    "minimum_priority_categories": 3,
+    "alternative_useful_facts": 8,
+    "priority_categories": [
+      "voltage",
+      "current",
+      "package",
+      "application_or_function",
+      "frequency",
+      "operating_temperature"
+    ]
+  },
+  "cheap_writer_model": "gpt-5.6-luna",
+  "tone_editor_model": "gpt-5.4-mini",
+  "facts_auditor_model": "gpt-5.4-mini",
+  "pdf_reasoning_effort": "medium",
+  "writer_reasoning_effort": "medium",
+  "tone_reasoning_effort": "low",
+  "auditor_reasoning_effort": "low",
+  "max_output_tokens": 6500,
+  "pdf_max_output_tokens": 6500,
+  "tone_max_output_tokens": 6500,
+  "audit_max_output_tokens": 3200,
+  "technical_target_words": {
+    "min": 560,
+    "preferred_min": 590,
+    "max": 650
+  },
+  "commercial_target_words": {
+    "min": 300,
+    "preferred_min": 330,
+    "max": 400
+  },
+  "keyword_density_target": {
+    "min": 1.2,
+    "max": 1.5
+  },
+  "keyword_density_soft_tolerance": 0.2,
+  "word_count_soft_tolerance_words": 120,
+  "site_domain": "tavakolelectronic.com",
+  "tone_editor_required": true,
+  "tone_editor_max_attempts": 1,
+  "tone_naturalness_minimum": 80,
+  "tone_ai_like_style_diagnostic_only": true,
+  "facts_only_audit_required": true,
+  "deterministic_density_repair_enabled": true,
+  "deterministic_length_repair_enabled": true,
+  "fine_length_trim_enabled": true,
+  "fine_length_trim_margin_words": 30,
+  "prompt_contract_version": "altimate-v1.1-frozen",
+  "pricing_basis": "OpenAI standard API pricing snapshot 2026-09-03; configurable",
+  "model_pricing_per_1m_usd": {
+    "gpt-5.6-luna": {
+      "input": 0.2,
+      "cached_input": 0.02,
+      "output": 1.2
+    },
+    "gpt-5.4-mini": {
+      "input": 0.75,
+      "cached_input": 0.075,
+      "output": 4.5
+    }
+  },
+  "seo_score_is_publish_gate": false,
+  "tone_editor_runs_on_editorial_metric_failures": true,
+  "rtl_negative_normalization_enabled": true,
+  "expensive_writer_model": "gpt-5.6-luna",
+  "pdf_fallback_model": "gpt-5.6-luna",
+  "expensive_escalation_below_score": 0,
+  "fact_safety_repair_max_attempts": 1
+}

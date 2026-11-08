@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object","additionalProperties":false,
+  "required":["status","naturalness_score","ai_like_style_score","flags","technical_facts_changed","body_markdown","changes"],
+  "properties":{
+    "status":{"type":"string","enum":["UNCHANGED","EDITED","REVIEW_REQUIRED"]},
+    "naturalness_score":{"type":"integer","minimum":0,"maximum":100},
+    "ai_like_style_score":{"type":"integer","minimum":0,"maximum":100},
+    "flags":{"type":"array","items":{"type":"string","enum":["AI_LIKE_META_LANGUAGE","GENERIC_FILLER","REPETITIVE_WARNING","BUREAUCRATIC_TONE","TRANSLATION_ARTIFACT","FOREIGN_LANGUAGE_LEAKAGE","UNNECESSARY_ENGLISH","INTERNAL_PIPELINE_LANGUAGE","OVER_EXPLANATION","LOW_COMMERCIAL_VALUE_SENTENCE","AWKWARD_PERSIAN","REPETITIVE_PART_NUMBER_CHECKING","LATEX_LEAKAGE"]}},
+    "technical_facts_changed":{"type":"boolean"},
+    "body_markdown":{"type":"string"},
+    "changes":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["action","reason"],"properties":{"action":{"type":"string","enum":["KEEP","REWRITE","MERGE","SHORTEN","DELETE","TRANSLATE","REORDER"]},"reason":{"type":"string"}}}}
+  }
+}

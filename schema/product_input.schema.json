@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/phase3-final-input-v0.2.json",
+  "title": "Tavakol Phase 3 Final Integrated Product Input V0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "identity",
+    "images",
+    "seo_context"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "phase3-final-input-v0.2"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_number",
+        "manufacturer",
+        "product_type_label",
+        "product_category",
+        "verified_package_installation"
+      ],
+      "properties": {
+        "part_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "product_type_label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product_category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified_package_installation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "filename",
+          "path",
+          "is_primary"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_primary": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "seo_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved_internal_links",
+        "approved_external_links"
+      ],
+      "properties": {
+        "approved_internal_links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approvedLink"
+          }
+        },
+        "approved_external_links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/approvedLink"
+          }
+        }
+      }
+    },
+    "source_hint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasheet_status",
+        "datasheet_path",
+        "phase2_verified_exact_match",
+        "phase2_package"
+      ],
+      "properties": {
+        "datasheet_status": {
+          "type": "string"
+        },
+        "datasheet_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "phase2_verified_exact_match": {
+          "type": "boolean"
+        },
+        "phase2_package": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "$defs": {
+    "approvedLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "anchor_hint"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anchor_hint": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

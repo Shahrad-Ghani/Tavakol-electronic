@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/phase3-final-body-repair-v4.1.json",
+  "title": "Phase3 Final Targeted Body Repair V4.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["body_markdown"],
+  "properties": {
+    "body_markdown": {"type": "string", "minLength": 1}
+  }
+}

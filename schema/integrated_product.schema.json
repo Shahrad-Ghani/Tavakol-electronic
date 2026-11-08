@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tavakolelectronic.com/schemas/tavakol-integrated-product-v1.json",
+  "title": "Tavakol Integrated Phase 1 + 2 + 3 Product V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product_id",
+    "identity",
+    "phase1",
+    "phase2",
+    "phase3",
+    "publishing_preview",
+    "orchestration"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "tavakol-integrated-product-v1"
+    },
+    "product_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_number",
+        "manufacturer",
+        "manufacturer_country",
+        "category",
+        "category_context",
+        "package"
+      ],
+      "properties": {
+        "part_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manufacturer_country": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "category": {
+          "type": "string"
+        },
+        "package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "status",
+            "phase2_mouser",
+            "phase3_datasheet"
+          ],
+          "properties": {
+            "value": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "CONFIRMED_MOUSER_AND_DATASHEET",
+                "DATASHEET_VERIFIED",
+                "MOUSER_EXACT_ONLY",
+                "CONFLICT_REVIEW",
+                "UNKNOWN"
+              ]
+            },
+            "phase2_mouser": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "phase3_datasheet": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "category_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "key",
+            "display_name",
+            "title_prefix",
+            "density_phrase",
+            "slug_rule",
+            "category_url",
+            "wordpress",
+            "technical_focus"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "display_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title_prefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "density_phrase": {
+              "type": "string",
+              "minLength": 1
+            },
+            "slug_rule": {
+              "type": "string",
+              "minLength": 1
+            },
+            "category_url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "wordpress": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "parent",
+                "child",
+                "term_id",
+                "parent_term_id"
+              ],
+              "properties": {
+                "parent": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "child": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "term_id": {
+                  "type": "integer"
+                },
+                "parent_term_id": {
+                  "type": "integer"
+                }
+              }
+            },
+            "technical_focus": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "phase1": {
+      "type": "object",
+      "required": [
+        "status",
+        "source_reference",
+        "part_number_ocr",
+        "identity_validation",
+        "final_image",
+        "image_optimization",
+        "api_accounting",
+        "metadata_path"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "IN_PROGRESS",
+            "PN_READY",
+            "COMPLETED"
+          ]
+        },
+        "source_reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "part_number_ocr": {
+          "type": "object"
+        },
+        "identity_validation": {
+          "type": "object"
+        },
+        "final_image": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "image_optimization": {
+          "type": "object"
+        },
+        "api_accounting": {
+          "type": "object"
+        },
+        "metadata_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "phase2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "verified_exact_match",
+        "manufacturer",
+        "manufacturer_country",
+        "datasheet_path",
+        "document_source",
+        "source_url",
+        "package",
+        "ambiguity_flag",
+        "source_trace",
+        "last_error"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "verified_exact_match": {
+          "type": "boolean"
+        },
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manufacturer_country": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "datasheet_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "document_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "package": {
+          "type": "object"
+        },
+        "ambiguity_flag": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_trace": {
+          "type": "array"
+        },
+        "last_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "phase3": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "publishing_preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "publish_mode",
+        "product_title",
+        "slug",
+        "focus_keyword",
+        "seo_title",
+        "meta_description",
+        "primary_image_alt",
+        "primary_image_path",
+        "description_html_path",
+        "package_installation",
+        "woocommerce_attributes",
+        "internal_links"
+      ],
+      "properties": {
+        "product_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slug": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "focus_keyword": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seo_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "meta_description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "primary_image_alt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description_html_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "package_installation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "publish_mode": {
+          "type": "string"
+        },
+        "primary_image_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "woocommerce_attributes": {
+          "type": "object"
+        },
+        "internal_links": {
+          "type": "array"
+        }
+      }
+    },
+    "orchestration": {
+      "type": "object"
+    }
+  }
+}

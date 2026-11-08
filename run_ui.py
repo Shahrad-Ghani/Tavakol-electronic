@@ -63,7 +63,7 @@ class AuditWindow(tk.Toplevel):
         ttk.Label(top, text="Filter:").pack(side="left", padx=(12, 3))
         self.audit_filter_var = tk.StringVar(value="All")
         self.audit_filter = ttk.Combobox(top, textvariable=self.audit_filter_var,
-            state="readonly", width=18, values=["All", "Rejected Images", "Missing Final", "Needs Audit", "Datasheet web_error"])
+            state="readonly", width=18, values=["All", "Not Approved", "Rejected Images", "Missing Final", "Needs Audit", "Datasheet web_error"])
         self.audit_filter.pack(side="left", padx=3)
         self.audit_filter.bind("<<ComboboxSelected>>", lambda e: self.refresh(keep_current=False))
         ttk.Label(top, text="PN:").pack(side="left", padx=(8, 2))
@@ -202,7 +202,9 @@ class AuditWindow(tk.Toplevel):
         items = list_audit_items(self.project_root)
         mode = self.audit_filter_var.get()
         query = self.audit_search_var.get().strip().casefold()
-        if mode == "Rejected Images":
+        if mode == "Not Approved":
+            items = [x for x in items if not bool(x.get("admin_approved"))]
+        elif mode == "Rejected Images":
             items = [x for x in items if any(d.get("code") == "IMAGE_IDENTITY_REJECTED" for d in x.get("diagnostics") or [])]
         elif mode == "Missing Final":
             items = [x for x in items if not x.get("final_path")]
