@@ -116,6 +116,13 @@ def test_phase4_publisher_uses_new_product_flow_and_phase3_content():
     publisher_path = ROOT / "phase4" / "publisher.py"
     source = publisher_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
+    # Detect duplicated publisher tails/entrypoints introduced by file rewrites.
+    definitions = [
+        node.name for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef))
+    ]
+    assert len(definitions) == len(set(definitions))
+    assert source.count('if __name__ == "__main__":') == 1
     publish_one = next(
         node for node in tree.body
         if isinstance(node, ast.FunctionDef) and node.name == "publish_one"
