@@ -365,11 +365,14 @@ def check_with_scroll_retry(
     *,
     timeout_ms: int = 10000,
 ) -> None:
-    """Check a category checkbox with one safe scroll/retry; checking is idempotent."""
+    """Check a category checkbox; use scroll fallback only on a failed check.
+
+    Playwright's Locator.check() already scrolls into view automatically.
+    Skipping an additional scroll call also supports lightweight checkbox mocks.
+    """
     last_error = None
     for attempt in range(2):
         try:
-            locator.scroll_into_view_if_needed(timeout=min(timeout_ms, 4000))
             locator.check(timeout=timeout_ms)
             return
         except Exception as exc:
