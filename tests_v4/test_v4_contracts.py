@@ -290,3 +290,20 @@ def test_phase4_category_check_scroll_retry_on_transient_failure(monkeypatch):
     assert checkbox.checked
     assert checkbox.calls == 2
     assert nudges == ["Select exact category"]
+
+
+def test_persian_category_zwnj_and_space_are_equivalent():
+    from phase4.publisher import normalize_category_label
+
+    wordpress_label = "نیمه\u200cهادی ها"
+    registry_label = "نیمه هادی ها"
+
+    assert normalize_category_label(wordpress_label) == normalize_category_label(registry_label)
+    assert normalize_category_label("ماژول دیود") == normalize_category_label("ماژول دیود")
+
+
+def test_category_normalization_does_not_accept_different_category_names():
+    from phase4.publisher import normalize_category_label
+
+    assert normalize_category_label("نیمه هادی ها") != normalize_category_label("نیمه هادی های قدرت")
+    assert normalize_category_label("ماژول دیود") != normalize_category_label("ماژول تریستور")
