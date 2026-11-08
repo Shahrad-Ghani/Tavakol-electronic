@@ -240,3 +240,53 @@ def test_phase4_click_handler_gets_one_scroll_retry():
     click_with_scroll_retry(page, locator, "test handler", timeout_ms=1)
     assert locator.click_count == 2
     assert page.scroll_calls >= 2
+
+
+def test_phase4_category_check_works_without_explicit_scroll_method():
+    """Playwright check() scrolls automatically; lightweight mocks need only check()."""
+    from phase4.publisher import check_with_scroll_retry
+
+    class Checkbox:
+        def __init__(self):
+            self.checked = False
+
+        def check(self, timeout=None):
+            self.checked = True
+
+        def is_checked(self):
+            return self.checked
+
+    class NoScrollPage:
+        def evaluate(self, *args, **kwargs):
+            raise AssertionError("No manual scroll should run when check succeeds")
+
+    checkbox = Checkbox()
+    check_with_scroll_retry(NoScrollPage(), checkbox, "Select IGBT category")
+    assert checkbox.checked
+
+
+def test_phase4_category_check_scroll_retry_on_transient_failure(monkeypatch):
+    from phase4 import publisher
+
+    nudges = []
+
+    class Checkbox:
+        def __init__(self):
+            self.calls = 0
+            self.checked = False
+
+        def check(self, timeout=None):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("transient checkbox handler failure")
+            self.checked = True
+
+        def is_checked(self):
+            return self.checked
+
+    monkeypatch.setattr(publisher, "scroll_nudge_down_up", lambda page, reason: nudges.append(reason))
+    checkbox = Checkbox()
+    publisher.check_with_scroll_retry(object(), checkbox, "Select exact category", timeout_ms=100)
+    assert checkbox.checked
+    assert checkbox.calls == 2
+    assert nudges == ["Select exact category"]
